@@ -71,7 +71,13 @@ Version 2 adds a Stable Diffusion image-to-image prototype:
 src/diffusion_neoclassical_demo.py
 ```
 
-This version takes a camera frame or still image and uses a diffusion model to translate it toward a neoclassical oil-painting style. In camera mode, it does not regenerate every frame continuously. Instead, the user points the camera, presses `g`, and the current frame is sent to the diffusion model.
+This version takes a camera frame or still image and uses a diffusion model to translate it toward a neoclassical oil-painting style. It is not intended to be high-FPS realtime video. In camera mode, the user points the camera, presses `g`, and the current frame is sent to the diffusion model.
+
+Each saved generation keeps the evidence pair:
+
+1. the original input image
+2. the generated neoclassical image
+3. a side-by-side comparison image
 
 Install the extra diffusion dependencies:
 

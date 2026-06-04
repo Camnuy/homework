@@ -4,6 +4,8 @@
 
 第二版加入 Stable Diffusion 图生图原型，用大模型把街景图像转译成新古典主义油画感。
 
+和第一版不同，这一版不再追求实时逐帧处理。客户确认不需要实时生成，所以交互方式改成“输入一张图”或“从摄像头抓取当前一帧”，再等待模型生成结果。这样更符合 Stable Diffusion 的实际速度，也更容易得到质量稳定的图片。
+
 这一版先不训练，重点是先验证：
 
 1. 摄像头画面能不能作为输入
@@ -25,6 +27,12 @@ src/diffusion_neoclassical_demo.py
 2. 摄像头模式：打开摄像头，按 `g` 或空格键，把当前帧送进 Stable Diffusion 生成
 
 摄像头模式不是每一帧连续生成，因为 Stable Diffusion 速度较慢。这个版本更适合“按下按钮生成当前画面”的交互方式。
+
+每次保存时会保留三张图：
+
+1. `original`：原始输入图，也就是送入模型前的街景图
+2. `neoclassical`：Stable Diffusion 生成的新古典主义结果图
+3. `comparison`：原图和生成图的左右对比图
 
 ## 3. 依赖
 
@@ -55,6 +63,14 @@ python src/diffusion_neoclassical_demo.py --image path\to\street_photo.jpg
 outputs/
 ```
 
+图片模式会自动保存同一组结果文件：
+
+```text
+diffusion_neoclassical_original_时间戳.png
+diffusion_neoclassical_neoclassical_时间戳.png
+diffusion_neoclassical_comparison_时间戳.png
+```
+
 ## 5. 运行摄像头模式
 
 ```powershell
@@ -64,7 +80,7 @@ python src/diffusion_neoclassical_demo.py
 按键：
 
 1. `g` 或空格：生成当前摄像头画面
-2. `s`：保存上一次生成结果
+2. `s`：保存上一次的原图、生成图和对比图
 3. `q` 或 `Esc`：退出
 
 ## 6. 为什么第二版先不训练

@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 
 import cv2
@@ -109,13 +110,30 @@ def generate_image(pipe, init_image: Image.Image, args: argparse.Namespace) -> I
     return result.images[0]
 
 
-def save_image(image: Image.Image, prefix: str) -> Path:
+def make_comparison_image(original: Image.Image, generated: Image.Image) -> Image.Image:
+    from PIL import Image
+
+    generated = generated.convert("RGB")
+    original = original.convert("RGB").resize(generated.size, Image.Resampling.LANCZOS)
+    comparison = Image.new("RGB", (generated.width * 2, generated.height), (20, 18, 16))
+    comparison.paste(original, (0, 0))
+    comparison.paste(generated, (generated.width, 0))
+    return comparison
+
+
+def save_generation_pair(original: Image.Image, generated: Image.Image, prefix: str) -> dict[str, Path]:
     out_dir = Path("outputs")
     out_dir.mkdir(exist_ok=True)
-    timestamp = time.strftime("%Y%m%d_%H%M%S")
-    path = out_dir / f"{prefix}_{timestamp}.png"
-    image.save(path)
-    return path
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+    paths = {
+        "original": out_dir / f"{prefix}_original_{timestamp}.png",
+        "generated": out_dir / f"{prefix}_neoclassical_{timestamp}.png",
+        "comparison": out_dir / f"{prefix}_comparison_{timestamp}.png",
+    }
+    original.convert("RGB").save(paths["original"])
+    generated.convert("RGB").save(paths["generated"])
+    make_comparison_image(original, generated).save(paths["comparison"])
+    return paths
 
 
 def run_image(args: argparse.Namespace) -> None:
@@ -125,8 +143,10 @@ def run_image(args: argparse.Namespace) -> None:
     source = Image.open(args.image)
     init_image = resize_for_diffusion(source, args.size)
     output = generate_image(pipe, init_image, args)
-    path = save_image(output, "diffusion_neoclassical")
-    print(f"Saved: {path}")
+    paths = save_generation_pair(init_image, output, "diffusion_neoclassical")
+    print(f"Saved original: {paths['original']}")
+    print(f"Saved generated: {paths['generated']}")
+    print(f"Saved comparison: {paths['comparison']}")
 
     if not args.no_window:
         preview = np.hstack([
@@ -145,7 +165,7 @@ def draw_help(frame: np.ndarray, last_output: np.ndarray | None, status: str) ->
         display = np.hstack([frame, preview])
 
     lines = [
-        "Diffusion Neoclassical Demo | g/space generate | s save last | q quit",
+        "Diffusion Neoclassical Demo | g/space generate | s save pair | q quit",
         status,
     ]
     pad = 10
@@ -176,9 +196,10 @@ def run_camera(args: argparse.Namespace) -> None:
 
     print("Camera mode running.")
     print("This is not high-FPS realtime. Press g/space to generate the current frame.")
-    print("Keys: g/space generate, s save last output, q/Esc quit.")
+    print("Keys: g/space generate, s save original+generated pair, q/Esc quit.")
 
     last_output_cv: np.ndarray | None = None
+    last_input_pil: Image.Image | None = None
     last_output_pil: Image.Image | None = None
     status = "Ready. Point camera at a street scene, then press g."
 
@@ -201,15 +222,19 @@ def run_camera(args: argparse.Namespace) -> None:
 
             start = time.perf_counter()
             init_image = cv_to_pil(frame, args.size)
+            last_input_pil = init_image
             last_output_pil = generate_image(pipe, init_image, args)
             last_output_cv = pil_to_cv(last_output_pil)
             elapsed = time.perf_counter() - start
-            status = f"Generated in {elapsed:.1f}s. Press g again or s to save."
+            status = f"Generated in {elapsed:.1f}s. Press g again or s to save pair."
 
-        if key == ord("s") and last_output_pil is not None:
-            path = save_image(last_output_pil, "diffusion_neoclassical_camera")
-            status = f"Saved: {path}"
+        if key == ord("s") and last_input_pil is not None and last_output_pil is not None:
+            paths = save_generation_pair(last_input_pil, last_output_pil, "diffusion_neoclassical_camera")
+            status = f"Saved pair: {paths['original'].name} + {paths['generated'].name}"
             print(status)
+            print(f"Original: {paths['original']}")
+            print(f"Generated: {paths['generated']}")
+            print(f"Comparison: {paths['comparison']}")
 
     capture.release()
     cv2.destroyAllWindows()
