@@ -238,6 +238,7 @@ outputs/
 external/
 lora_outputs/
 data/neoclassical_lora/metadata.jsonl
+data/neoclassical_lora/source_manifest.jsonl
 data/neoclassical_lora/images/*
 data/neoclassical_lora/captions/*.txt
 !data/neoclassical_lora/images/.gitkeep

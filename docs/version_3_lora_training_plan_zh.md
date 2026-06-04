@@ -38,12 +38,13 @@ python src\diffusion_neoclassical_demo.py --image path\to\street.jpg --lora path
 本项目已经新增两个第三版辅助脚本：
 
 ```text
+scripts/download_neoclassical_references.py
 scripts/prepare_lora_dataset.py
 scripts/run_lora_training.ps1
 src/lora_comparison_demo.py
 ```
 
-第一个脚本负责生成 Diffusers 训练常用的 `metadata.jsonl`。第二个脚本负责拉取 Hugging Face Diffusers 官方 examples，并调用其中的 `train_text_to_image_lora.py` 训练脚本。第三个脚本用于在训练完成后比较“无 LoRA”和“有 LoRA”的效果。
+第一个脚本负责从博物馆开放 API 下载候选参考图，并记录来源。第二个脚本负责生成 Diffusers 训练常用的 `metadata.jsonl`。第三个脚本负责拉取 Hugging Face Diffusers 官方 examples，并调用其中的 `train_text_to_image_lora.py` 训练脚本。第四个脚本用于在训练完成后比较“无 LoRA”和“有 LoRA”的效果。
 
 ## 3. 数据集准备
 
@@ -80,6 +81,14 @@ neoclassical oil painting, academic composition, warm chiaroscuro, refined reali
 ```powershell
 python scripts\prepare_lora_dataset.py --write-missing-captions
 ```
+
+也可以先用开放馆藏下载脚本生成一批候选图片：
+
+```powershell
+python scripts\download_neoclassical_references.py --limit 30
+```
+
+下载后一定要人工筛选，把不符合新古典主义风格的图片从 `images/` 和 `captions/` 中删掉，再重新运行 `prepare_lora_dataset.py`。
 
 注意：尽量使用公版作品或允许学习使用的图片，不要把不确定版权的大量图片直接提交到 GitHub。可以在 README 或 weblog 中说明图片来源和用途。
 

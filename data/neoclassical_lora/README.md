@@ -34,3 +34,20 @@ python scripts\prepare_lora_dataset.py --write-missing-captions
 ```
 
 This creates `metadata.jsonl`, which is used by the Diffusers LoRA training script.
+
+You can also download a starter set from museum open-access APIs:
+
+```powershell
+python scripts\download_neoclassical_references.py --limit 30
+```
+
+The downloader writes:
+
+```text
+images/
+captions/
+metadata.jsonl
+source_manifest.jsonl
+```
+
+Review the downloaded images before training and delete anything that does not match the intended neoclassical style.

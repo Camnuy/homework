@@ -103,6 +103,7 @@ Version 3 starts the LoRA training workflow. It adds a neoclassical style datase
 
 ```text
 data/neoclassical_lora/
+scripts/download_neoclassical_references.py
 scripts/prepare_lora_dataset.py
 scripts/run_lora_training.ps1
 src/lora_comparison_demo.py
@@ -110,6 +111,12 @@ docs/version_3_lora_training_plan_zh.md
 ```
 
 The Version 2 prompt has also been adjusted toward style transfer only: preserve the original street layout and change the visual rendering style, instead of asking the model to invent a new scene.
+
+Download public-domain/open-access starter references:
+
+```powershell
+python scripts\download_neoclassical_references.py --limit 30
+```
 
 Prepare local LoRA metadata:
 
