@@ -1,9 +1,9 @@
 param(
     [string]$Python = "C:\Users\23913\.conda\envs\homework2\python.exe",
     [string]$DatasetDir = "data\neoclassical_lora",
-    [string]$OutputDir = "lora_outputs\neoclassical_style_lora",
+    [string]$OutputDir = "lora_outputs\neoclassical_style_lora_sd15",
     [string]$DiffusersRepo = "external\diffusers",
-    [string]$Model = "stabilityai/sd-turbo",
+    [string]$Model = "runwayml/stable-diffusion-v1-5",
     [string]$MixedPrecision = "no",
     [int]$Resolution = 512,
     [int]$MaxTrainSteps = 800,
@@ -11,7 +11,7 @@ param(
     [double]$LearningRate = 0.0001,
     [int]$Rank = 8,
     [int]$Seed = 42,
-    [string]$ValidationPrompt = "a street photograph transformed only in visual style into a restrained neoclassical oil painting",
+    [string]$ValidationPrompt = "a source image transformed only in visual style into a restrained neoclassical oil painting",
     [switch]$NoValidation,
     [switch]$AllowCpu
 )

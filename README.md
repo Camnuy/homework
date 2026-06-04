@@ -1,8 +1,8 @@
-# Real-time Neoclassical Street Translation
+# Neoclassical Style Transfer
 
 This repository contains the first prototype for my EMI 2026 final project.
 
-The current version is an OpenCV-based real-time camera demo. It reads a webcam feed and applies a neoclassical-inspired visual treatment to the live image. The goal is to test the basic creative direction before moving into a larger machine-learning version using diffusion models and LoRA fine-tuning.
+The project explores how to transform a source image or camera frame into a neoclassical oil-painting style while preserving the original content and composition. The work is developed as a sequence of prototypes, starting from traditional image processing and moving toward Stable Diffusion, ControlNet, IP-Adapter reference-image guidance, and LoRA style training.
 
 ## Current Prototype
 
@@ -63,7 +63,26 @@ While the camera window is open:
 
 ## Project Direction
 
-Version 1 is not yet the final machine-learning system. It is a fast visual prototype used to test the interaction and aesthetic direction.
+The project is organized around five technical versions:
+
+| Version | Method | Purpose |
+| --- | --- | --- |
+| V1 | OpenCV visual filter | Fast baseline without Stable Diffusion |
+| V2 | Stable Diffusion img2img + style prompt | Use the source image as the content input and a text prompt as style guidance |
+| V3 | Stable Diffusion img2img + ControlNet Canny | Preserve source structure more strongly through edge control |
+| V4 | Stable Diffusion img2img + ControlNet + IP-Adapter | Use a neoclassical painting reference image to guide the style |
+| V5 | Stable Diffusion img2img + ControlNet + trained LoRA | Test whether a small trained style adapter improves neoclassical consistency |
+
+The current design goal is style transfer, not scene generation: the source image should keep its layout, perspective, objects, and geometry, while the rendering style changes toward restrained neoclassical oil painting.
+
+All diffusion-based versions now use the same SD1.5 model family by default:
+
+```text
+base model: runwayml/stable-diffusion-v1-5
+ControlNet: lllyasviel/sd-controlnet-canny
+IP-Adapter: h94/IP-Adapter, models/ip-adapter_sd15.bin
+LoRA target: SD1.5 UNet LoRA
+```
 
 Version 2 adds a Stable Diffusion image-to-image prototype:
 
@@ -71,7 +90,7 @@ Version 2 adds a Stable Diffusion image-to-image prototype:
 src/diffusion_neoclassical_demo.py
 ```
 
-This version takes a camera frame or still image and uses a diffusion model to translate it toward a neoclassical oil-painting style. It is not intended to be high-FPS realtime video. In camera mode, the user points the camera, presses `g`, and the current frame is sent to the diffusion model.
+This version takes a camera frame or still image and uses a diffusion model to translate the source image toward a neoclassical oil-painting style. It is not intended to be high-FPS realtime video. In camera mode, the user points the camera, presses `g`, and the current frame is sent to the diffusion model.
 
 Each saved generation keeps the evidence pair:
 
@@ -94,13 +113,13 @@ python src/diffusion_neoclassical_demo.py
 Run it on one image:
 
 ```powershell
-python src/diffusion_neoclassical_demo.py --image path\to\street_photo.jpg
+python src/diffusion_neoclassical_demo.py --image path\to\source_photo.jpg
 ```
 
 When `--lora` is used in image mode, the script saves both the baseline output and the LoRA output:
 
 ```powershell
-python src/diffusion_neoclassical_demo.py --image path\to\street_photo.jpg --lora lora_outputs\neoclassical_style_lora_cpu_trial
+python src/diffusion_neoclassical_demo.py --image path\to\source_photo.jpg --lora lora_outputs\neoclassical_style_lora_sd15
 ```
 
 Version 2 does not include training yet. The reason is practical: diffusion inference can be tested first, then a later version can add a LoRA training workflow once the dataset and aesthetic target are clearer.
@@ -119,7 +138,7 @@ docs/version_3_gpu_training_runbook_zh.md
 docs/version_3_local_cpu_training_log_zh.md
 ```
 
-The Version 2 prompt has also been adjusted toward style transfer only: preserve the original street layout and change the visual rendering style, instead of asking the model to invent a new scene.
+The Version 2 prompt has also been adjusted toward style transfer only: preserve the source image content and change the visual rendering style, instead of asking the model to invent a new scene.
 
 Download public-domain/open-access starter references:
 
@@ -142,7 +161,7 @@ Export the local training dataset for Colab or another GPU machine:
 After a LoRA has been trained, compare baseline and LoRA outputs:
 
 ```powershell
-python src\lora_comparison_demo.py --image path\to\street.jpg --lora lora_outputs\neoclassical_style_lora
+python src\lora_comparison_demo.py --image path\to\source.jpg --lora lora_outputs\neoclassical_style_lora_sd15
 ```
 
 Version 4 adds a ControlNet Canny prototype for stronger structure preservation:
@@ -155,22 +174,44 @@ docs/version_4_controlnet_canny_zh.md
 Run a ControlNet test:
 
 ```powershell
-python src\controlnet_neoclassical_demo.py --image path\to\street.jpg --size 384 --steps 4 --strength 0.38 --control-scale 1.0 --guidance 0 --no-window
+python src\controlnet_neoclassical_demo.py --image path\to\source.jpg --size 384 --steps 12 --strength 0.45 --control-scale 0.9 --guidance 6.5 --no-window
 ```
 
 Run ControlNet with a LoRA comparison:
 
 ```powershell
-python src\controlnet_neoclassical_demo.py --image path\to\street.jpg --lora lora_outputs\neoclassical_style_lora_cpu_trial --size 384 --steps 4 --strength 0.38 --control-scale 1.0 --guidance 0 --no-window
+python src\controlnet_neoclassical_demo.py --image path\to\source.jpg --lora lora_outputs\neoclassical_style_lora_sd15 --size 384 --steps 12 --strength 0.45 --control-scale 0.9 --guidance 6.5 --no-window
 ```
 
-The planned next stage is to add training:
+Version 5 adds an IP-Adapter prototype for reference-guided style transfer:
 
-1. use a large image-to-image model for neoclassical street translation
-2. collect a small neoclassical painting reference dataset
-3. train or fine-tune a LoRA style adapter
-4. compare the OpenCV prototype with the diffusion/LoRA version
-5. evaluate speed, stability, visual quality, and ethical issues around street cameras
+```text
+src/ip_adapter_style_transfer_demo.py
+docs/version_5_ip_adapter_zh.md
+```
+
+IP-Adapter uses a separate style reference image. In this project, that reference should be a neoclassical painting. It uses the same SD1.5 model family as the other diffusion branches, so the comparison is easier to interpret.
+
+Run an IP-Adapter test:
+
+```powershell
+python src\ip_adapter_style_transfer_demo.py --image path\to\source.jpg --style-image path\to\neoclassical_reference.jpg --size 384 --steps 12 --strength 0.45 --ip-adapter-scale 0.75 --no-window
+```
+
+Generate a one-image comparison grid. The grid saves the original image plus five method outputs:
+
+```powershell
+python src\method_comparison_demo.py --image path\to\source.jpg --style-image path\to\neoclassical_reference.jpg --size 384 --steps 12 --strength 0.45 --control-scale 0.9 --guidance 6.5
+```
+
+The comparison script saves:
+
+1. original source image
+2. V1 OpenCV output
+3. V2 Stable Diffusion prompt-only output
+4. V3 ControlNet output
+5. V4 IP-Adapter reference-guided output
+6. V5 ControlNet + LoRA output
 
 ## AI and Third-party Resources
 

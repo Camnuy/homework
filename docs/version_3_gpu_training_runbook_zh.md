@@ -40,7 +40,7 @@ cuda_count 0
 如果一定要在本地 CPU 上先验证训练链路，可以运行低分辨率 trial：
 
 ```powershell
-.\scripts\run_lora_training.ps1 -AllowCpu -NoValidation -Resolution 128 -MaxTrainSteps 50 -GradientAccumulationSteps 1 -Rank 4 -OutputDir lora_outputs\neoclassical_style_lora_cpu_trial -MixedPrecision no
+.\scripts\run_lora_training.ps1 -AllowCpu -NoValidation -Resolution 128 -MaxTrainSteps 50 -GradientAccumulationSteps 1 -Rank 4 -OutputDir lora_outputs\neoclassical_style_lora_sd15_smoke -MixedPrecision no
 ```
 
 这个命令只适合证明训练流程能跑通，不代表最终画质。
@@ -100,7 +100,7 @@ pip install -r requirements_diffusion.txt
 训练输出默认保存到：
 
 ```text
-lora_outputs/neoclassical_style_lora/
+lora_outputs/neoclassical_style_lora_sd15/
 ```
 
 ## 5. 在 Colab 训练的基本流程
@@ -138,7 +138,7 @@ Colab 中可以执行类似命令：
 ```python
 !git clone https://github.com/huggingface/diffusers external/diffusers
 !accelerate launch --mixed_precision=fp16 external/diffusers/examples/text_to_image/train_text_to_image_lora.py \
-  --pretrained_model_name_or_path=stabilityai/sd-turbo \
+  --pretrained_model_name_or_path=runwayml/stable-diffusion-v1-5 \
   --train_data_dir=data/neoclassical_lora \
   --caption_column=text \
   --resolution=512 \
@@ -151,16 +151,16 @@ Colab 中可以执行类似命令：
   --lr_scheduler=constant \
   --lr_warmup_steps=0 \
   --rank=8 \
-  --output_dir=lora_outputs/neoclassical_style_lora \
+  --output_dir=lora_outputs/neoclassical_style_lora_sd15 \
   --checkpointing_steps=100 \
-  --validation_prompt="a street photograph transformed only in visual style into a restrained neoclassical oil painting" \
+  --validation_prompt="a source image transformed only in visual style into a restrained neoclassical oil painting" \
   --seed=42
 ```
 
 训练完成后打包 LoRA：
 
 ```python
-!zip -r neoclassical_style_lora.zip lora_outputs/neoclassical_style_lora
+!zip -r neoclassical_style_lora_sd15.zip lora_outputs/neoclassical_style_lora_sd15
 ```
 
 ## 6. 训练完成后怎么测试
@@ -168,19 +168,19 @@ Colab 中可以执行类似命令：
 把训练好的 LoRA 放回本项目，比如：
 
 ```text
-lora_outputs/neoclassical_style_lora/
+lora_outputs/neoclassical_style_lora_sd15/
 ```
 
 运行单图生成：
 
 ```powershell
-python src\diffusion_neoclassical_demo.py --image path\to\street.jpg --lora lora_outputs\neoclassical_style_lora --size 512 --steps 3 --strength 0.5 --seed 42
+python src\diffusion_neoclassical_demo.py --image path\to\source.jpg --lora lora_outputs\neoclassical_style_lora_sd15 --size 512 --steps 12 --strength 0.45 --guidance 6.5 --seed 42
 ```
 
 运行无 LoRA / 有 LoRA 对比：
 
 ```powershell
-python src\lora_comparison_demo.py --image path\to\street.jpg --lora lora_outputs\neoclassical_style_lora --size 512 --steps 3 --strength 0.5 --seed 42
+python src\lora_comparison_demo.py --image path\to\source.jpg --lora lora_outputs\neoclassical_style_lora_sd15 --size 512 --steps 12 --strength 0.45 --guidance 6.5 --seed 42
 ```
 
 输出会保存到：
@@ -194,7 +194,7 @@ outputs/
 第一轮建议：
 
 ```text
-model: stabilityai/sd-turbo
+model: runwayml/stable-diffusion-v1-5
 resolution: 512
 rank: 8
 learning_rate: 0.0001

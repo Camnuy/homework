@@ -7,6 +7,7 @@ from pathlib import Path
 from PIL import Image
 
 from diffusion_neoclassical_demo import (
+    DEFAULT_MODEL,
     DEFAULT_NEGATIVE_PROMPT,
     DEFAULT_PROMPT,
     generate_image,
@@ -51,13 +52,13 @@ def save_lora_comparison(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Compare baseline diffusion output with a trained LoRA output.")
-    parser.add_argument("--image", required=True, help="Input street image.")
+    parser.add_argument("--image", required=True, help="Input source image.")
     parser.add_argument("--lora", required=True, help="Trained LoRA directory or safetensors file.")
-    parser.add_argument("--model", default="stabilityai/sd-turbo", help="Diffusers base model id.")
+    parser.add_argument("--model", default=DEFAULT_MODEL, help="SD1.5 base model id.")
     parser.add_argument("--size", type=int, default=512, help="Longest side passed into diffusion model.")
-    parser.add_argument("--steps", type=int, default=3, help="Inference steps.")
-    parser.add_argument("--strength", type=float, default=0.5, help="Image-to-image strength.")
-    parser.add_argument("--guidance", type=float, default=0.0, help="Guidance scale.")
+    parser.add_argument("--steps", type=int, default=12, help="Inference steps.")
+    parser.add_argument("--strength", type=float, default=0.45, help="Image-to-image strength.")
+    parser.add_argument("--guidance", type=float, default=6.5, help="Classifier-free guidance scale.")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for repeatable comparison.")
     parser.add_argument("--prompt", default=DEFAULT_PROMPT, help="Positive prompt.")
     parser.add_argument("--negative-prompt", default=DEFAULT_NEGATIVE_PROMPT, help="Negative prompt.")

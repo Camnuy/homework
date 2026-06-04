@@ -56,7 +56,7 @@ pip install -r requirements_diffusion.txt
 ## 4. 运行图片模式
 
 ```powershell
-python src/diffusion_neoclassical_demo.py --image path\to\street_photo.jpg
+python src/diffusion_neoclassical_demo.py --image path\to\source_photo.jpg
 ```
 
 输出图片会保存在：

@@ -11,20 +11,21 @@ import numpy as np
 
 
 DEFAULT_PROMPT = (
-    "style transfer only, preserve the original street layout, perspective, camera angle, "
-    "object positions, road, buildings, vehicles, people, and scene composition, "
+    "style transfer only, preserve the exact source image content, composition, perspective, "
+    "camera angle, object positions, edges, and geometry, change only the visual rendering style, "
     "restrained neoclassical oil painting, academic realism, smooth classical brushwork, "
     "muted warm earth palette, soft chiaroscuro, marble light, museum canvas texture"
 )
 
 DEFAULT_NEGATIVE_PROMPT = (
-    "new scene, changed layout, different camera angle, altered perspective, added buildings, "
-    "removed objects, warped road, distorted geometry, deformed vehicles, distorted faces, "
-    "extra limbs, cartoon, anime, candy colors, mosaic filter, pop art, glitch, cyberpunk, "
-    "fantasy, abstract, low quality, blurry, text, watermark"
+    "new scene, changed content, changed layout, different camera angle, altered perspective, "
+    "added objects, removed objects, warped geometry, distorted faces, extra limbs, cartoon, "
+    "anime, candy colors, mosaic filter, pop art, glitch, cyberpunk, fantasy, abstract, "
+    "low quality, blurry, text, watermark"
 )
 
-WINDOW_NAME = "Diffusion Neoclassical Street Translation"
+DEFAULT_MODEL = "runwayml/stable-diffusion-v1-5"
+WINDOW_NAME = "Diffusion Neoclassical Style Transfer"
 
 
 def import_diffusion_stack():
@@ -272,7 +273,7 @@ def run_camera(args: argparse.Namespace) -> None:
     last_output_cv: np.ndarray | None = None
     last_input_pil: Image.Image | None = None
     last_output_pil: Image.Image | None = None
-    status = "Ready. Point camera at a street scene, then press g."
+    status = "Ready. Point camera at a source scene, then press g."
 
     while True:
         ok, frame = capture.read()
@@ -312,17 +313,17 @@ def run_camera(args: argparse.Namespace) -> None:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Stable Diffusion image-to-image neoclassical street translation.")
-    parser.add_argument("--model", default="stabilityai/sd-turbo", help="Diffusers image-to-image model id.")
+    parser = argparse.ArgumentParser(description="Stable Diffusion image-to-image neoclassical style transfer.")
+    parser.add_argument("--model", default=DEFAULT_MODEL, help="SD1.5 image-to-image model id.")
     parser.add_argument("--lora", help="Optional trained LoRA directory or safetensors file.")
     parser.add_argument("--image", help="Run on a single image instead of camera.")
     parser.add_argument("--camera", type=int, default=0, help="Camera index.")
     parser.add_argument("--width", type=int, default=640, help="Camera width.")
     parser.add_argument("--height", type=int, default=480, help="Camera height.")
     parser.add_argument("--size", type=int, default=512, help="Longest side passed into diffusion model.")
-    parser.add_argument("--steps", type=int, default=3, help="Inference steps. SD-Turbo usually uses 1-4.")
-    parser.add_argument("--strength", type=float, default=0.5, help="Image-to-image strength. Lower values preserve more of the source image.")
-    parser.add_argument("--guidance", type=float, default=0.0, help="Guidance scale. SD-Turbo usually uses 0.")
+    parser.add_argument("--steps", type=int, default=12, help="Inference steps. Increase for quality, decrease for CPU tests.")
+    parser.add_argument("--strength", type=float, default=0.45, help="Image-to-image strength. Lower values preserve more of the source image.")
+    parser.add_argument("--guidance", type=float, default=6.5, help="Classifier-free guidance scale.")
     parser.add_argument("--seed", type=int, help="Optional random seed for repeatable comparisons.")
     parser.add_argument("--prompt", default=DEFAULT_PROMPT, help="Positive prompt.")
     parser.add_argument("--negative-prompt", default=DEFAULT_NEGATIVE_PROMPT, help="Negative prompt.")

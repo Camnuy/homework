@@ -35,19 +35,19 @@ src/controlnet_neoclassical_demo.py
 CPU 上先用较低参数：
 
 ```powershell
-python src\controlnet_neoclassical_demo.py --image C:\Users\23913\Desktop\street.jpg --size 384 --steps 4 --strength 0.38 --control-scale 1.0 --guidance 0 --no-window
+python src\controlnet_neoclassical_demo.py --image C:\Users\23913\Desktop\source.jpg --size 384 --steps 12 --strength 0.45 --control-scale 0.9 --guidance 6.5 --no-window
 ```
 
 如果要同时比较无 LoRA 和有 LoRA：
 
 ```powershell
-python src\controlnet_neoclassical_demo.py --image C:\Users\23913\Desktop\street.jpg --lora lora_outputs\neoclassical_style_lora_cpu_trial --size 384 --steps 4 --strength 0.38 --control-scale 1.0 --guidance 0 --no-window
+python src\controlnet_neoclassical_demo.py --image C:\Users\23913\Desktop\source.jpg --lora lora_outputs\neoclassical_style_lora_sd15 --size 384 --steps 12 --strength 0.45 --control-scale 0.9 --guidance 6.5 --no-window
 ```
 
 GPU 或更有耐心时可以试：
 
 ```powershell
-python src\controlnet_neoclassical_demo.py --image C:\Users\23913\Desktop\street.jpg --lora lora_outputs\neoclassical_style_lora_cpu_trial --size 512 --steps 4 --strength 0.42 --control-scale 1.0 --guidance 0 --no-window
+python src\controlnet_neoclassical_demo.py --image C:\Users\23913\Desktop\source.jpg --lora lora_outputs\neoclassical_style_lora_sd15 --size 512 --steps 12 --strength 0.45 --control-scale 0.9 --guidance 6.5 --no-window
 ```
 
 ## 4. 输出文件
@@ -121,8 +121,8 @@ controlnet_lora_compare_triptych_时间.png
 
 ## 6. 当前限制
 
-1. 这个版本默认使用 `stabilityai/sd-turbo` 和 SD2.1 Canny ControlNet：`thibaud/controlnet-sd21-canny-diffusers`。
+1. 这个版本默认使用 `runwayml/stable-diffusion-v1-5` 和 SD1.5 Canny ControlNet：`lllyasviel/sd-controlnet-canny`。
 2. 第一次运行需要下载 ControlNet model。
-3. CPU 推理会很慢，建议先用 `--size 384 --steps 4` 测试。
+3. CPU 推理会很慢，建议先用 `--size 384 --steps 12` 测试；如果只是确认流程，可以临时降低到 `--size 320 --steps 8`。
 4. 当前 LoRA 是本地 CPU trial，风格强度有限。第四版主要先验证结构控制。
 5. 更好的最终路线是：用同一个 base model 继续训练更强 LoRA，或者换到 SDXL + SDXL ControlNet + SDXL LoRA。

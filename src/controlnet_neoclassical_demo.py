@@ -12,6 +12,7 @@ from PIL import Image
 from diffusion_neoclassical_demo import (
     DEFAULT_NEGATIVE_PROMPT,
     DEFAULT_PROMPT,
+    DEFAULT_MODEL,
     choose_device,
     make_comparison_image,
     make_lora_comparison_image,
@@ -20,7 +21,8 @@ from diffusion_neoclassical_demo import (
 )
 
 
-WINDOW_NAME = "ControlNet Neoclassical Street Translation"
+WINDOW_NAME = "ControlNet Neoclassical Style Transfer"
+DEFAULT_CONTROLNET = "lllyasviel/sd-controlnet-canny"
 
 
 def import_controlnet_stack():
@@ -195,16 +197,16 @@ def run_image(args: argparse.Namespace) -> None:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="ControlNet Canny neoclassical street style transfer.")
-    parser.add_argument("--image", required=True, help="Input street image.")
-    parser.add_argument("--model", default="stabilityai/sd-turbo", help="SD 2.x-compatible base model.")
-    parser.add_argument("--controlnet", default="thibaud/controlnet-sd21-canny-diffusers", help="SD 2.1 Canny ControlNet model.")
+    parser = argparse.ArgumentParser(description="ControlNet Canny neoclassical style transfer.")
+    parser.add_argument("--image", required=True, help="Input source image.")
+    parser.add_argument("--model", default=DEFAULT_MODEL, help="SD1.5-compatible base model.")
+    parser.add_argument("--controlnet", default=DEFAULT_CONTROLNET, help="SD1.5 Canny ControlNet model.")
     parser.add_argument("--lora", help="Optional trained LoRA directory or safetensors file.")
     parser.add_argument("--size", type=int, default=512, help="Longest side passed into the model.")
-    parser.add_argument("--steps", type=int, default=4, help="Inference steps. SD-Turbo usually uses 2-4.")
-    parser.add_argument("--strength", type=float, default=0.42, help="Img2img strength. Lower preserves more structure.")
-    parser.add_argument("--guidance", type=float, default=0.0, help="Guidance scale. SD-Turbo usually uses 0.")
-    parser.add_argument("--control-scale", type=float, default=1.0, help="How strongly ControlNet follows the Canny edges.")
+    parser.add_argument("--steps", type=int, default=12, help="Inference steps. Increase for quality, decrease for CPU tests.")
+    parser.add_argument("--strength", type=float, default=0.45, help="Img2img strength. Lower preserves more structure.")
+    parser.add_argument("--guidance", type=float, default=6.5, help="Classifier-free guidance scale.")
+    parser.add_argument("--control-scale", type=float, default=0.9, help="How strongly ControlNet follows the Canny edges.")
     parser.add_argument("--canny-low", type=int, default=80, help="Canny low threshold.")
     parser.add_argument("--canny-high", type=int, default=180, help="Canny high threshold.")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for repeatable comparisons.")

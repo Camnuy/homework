@@ -30,7 +30,7 @@
 当前第二版代码已经有 LoRA 入口：
 
 ```powershell
-python src\diffusion_neoclassical_demo.py --image path\to\street.jpg --lora path\to\lora
+python src\diffusion_neoclassical_demo.py --image path\to\source.jpg --lora path\to\lora
 ```
 
 所以第三版主要新增的是训练数据、训练配置、训练说明和效果对比。
@@ -128,7 +128,7 @@ python scripts\download_neoclassical_references.py --limit 30
 训练完成后，可以用同一张街景图对比第二版和第三版：
 
 ```powershell
-python src\lora_comparison_demo.py --image path\to\street.jpg --lora lora_outputs\neoclassical_style_lora
+python src\lora_comparison_demo.py --image path\to\source.jpg --lora lora_outputs\neoclassical_style_lora_sd15
 ```
 
 这个脚本会保存四张图：原图、无 LoRA 结果、有 LoRA 结果、三栏对比图。
