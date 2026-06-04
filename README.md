@@ -63,9 +63,37 @@ While the camera window is open:
 
 ## Project Direction
 
-This first version is not yet the final machine-learning system. It is a fast visual prototype used to test the interaction and aesthetic direction.
+Version 1 is not yet the final machine-learning system. It is a fast visual prototype used to test the interaction and aesthetic direction.
 
-The planned next stage is to build a diffusion-based version:
+Version 2 adds a Stable Diffusion image-to-image prototype:
+
+```text
+src/diffusion_neoclassical_demo.py
+```
+
+This version takes a camera frame or still image and uses a diffusion model to translate it toward a neoclassical oil-painting style. In camera mode, it does not regenerate every frame continuously. Instead, the user points the camera, presses `g`, and the current frame is sent to the diffusion model.
+
+Install the extra diffusion dependencies:
+
+```powershell
+pip install -r requirements_diffusion.txt
+```
+
+Run the diffusion camera prototype:
+
+```powershell
+python src/diffusion_neoclassical_demo.py
+```
+
+Run it on one image:
+
+```powershell
+python src/diffusion_neoclassical_demo.py --image path\to\street_photo.jpg
+```
+
+Version 2 does not include training yet. The reason is practical: diffusion inference can be tested first, then a later version can add a LoRA training workflow once the dataset and aesthetic target are clearer.
+
+The planned next stage is to add training:
 
 1. use a large image-to-image model for neoclassical street translation
 2. collect a small neoclassical painting reference dataset
