@@ -110,6 +110,7 @@ scripts/run_lora_training.ps1
 src/lora_comparison_demo.py
 docs/version_3_lora_training_plan_zh.md
 docs/version_3_gpu_training_runbook_zh.md
+docs/version_3_local_cpu_training_log_zh.md
 ```
 
 The Version 2 prompt has also been adjusted toward style transfer only: preserve the original street layout and change the visual rendering style, instead of asking the model to invent a new scene.

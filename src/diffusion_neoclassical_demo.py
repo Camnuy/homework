@@ -12,10 +12,9 @@ import numpy as np
 
 DEFAULT_PROMPT = (
     "style transfer only, preserve the original street layout, perspective, camera angle, "
-    "object positions, buildings, road shape, vehicles, people, and scene composition, "
-    "transform the visual appearance into a restrained neoclassical oil painting, "
-    "academic realism, smooth classical brushwork, muted warm earth palette, "
-    "soft chiaroscuro, marble-like stone light, museum canvas texture, elegant classical atmosphere"
+    "object positions, road, buildings, vehicles, people, and scene composition, "
+    "restrained neoclassical oil painting, academic realism, smooth classical brushwork, "
+    "muted warm earth palette, soft chiaroscuro, marble light, museum canvas texture"
 )
 
 DEFAULT_NEGATIVE_PROMPT = (
@@ -275,6 +274,8 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    if int(args.steps * args.strength) < 1:
+        raise SystemExit("Increase --steps or --strength: image-to-image needs at least one effective denoising step.")
     if args.image:
         run_image(args)
     else:

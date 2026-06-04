@@ -37,6 +37,14 @@ cuda_count 0
 
 正式训练建议放到 Colab、实验室 GPU 电脑或云 GPU。
 
+如果一定要在本地 CPU 上先验证训练链路，可以运行低分辨率 trial：
+
+```powershell
+.\scripts\run_lora_training.ps1 -AllowCpu -NoValidation -Resolution 128 -MaxTrainSteps 50 -GradientAccumulationSteps 1 -Rank 4 -OutputDir lora_outputs\neoclassical_style_lora_cpu_trial -MixedPrecision no
+```
+
+这个命令只适合证明训练流程能跑通，不代表最终画质。
+
 ## 3. 本地已经准备好的文件
 
 数据集目录：

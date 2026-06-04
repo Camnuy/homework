@@ -7,15 +7,21 @@ param(
     [string]$MixedPrecision = "no",
     [int]$Resolution = 512,
     [int]$MaxTrainSteps = 800,
+    [int]$GradientAccumulationSteps = 4,
     [double]$LearningRate = 0.0001,
     [int]$Rank = 8,
     [int]$Seed = 42,
     [string]$ValidationPrompt = "a street photograph transformed only in visual style into a restrained neoclassical oil painting",
+    [switch]$NoValidation,
     [switch]$AllowCpu
 )
 
 $ErrorActionPreference = "Stop"
 $env:PYTHONIOENCODING = "utf-8"
+$projectRoot = (Resolve-Path ".").Path
+$env:HF_HOME = Join-Path $projectRoot ".cache\huggingface"
+$env:HUGGINGFACE_HUB_CACHE = Join-Path $env:HF_HOME "hub"
+$env:HF_HUB_DISABLE_SYMLINKS_WARNING = "1"
 
 if (!(Test-Path $Python)) {
     throw "Python environment not found: $Python"
@@ -35,6 +41,12 @@ if (!(Test-Path $trainScript)) {
     throw "Diffusers LoRA training script not found: $trainScript"
 }
 
+$diffusersSrc = Join-Path $DiffusersRepo "src"
+if (!(Test-Path $diffusersSrc)) {
+    throw "Diffusers source directory not found: $diffusersSrc"
+}
+$env:PYTHONPATH = "$diffusersSrc;$env:PYTHONPATH"
+
 & $Python scripts\prepare_lora_dataset.py `
     --dataset-dir $DatasetDir `
     --write-missing-captions
@@ -48,7 +60,7 @@ $trainArgs = @(
     "--center_crop",
     "--random_flip",
     "--train_batch_size=1",
-    "--gradient_accumulation_steps=4",
+    "--gradient_accumulation_steps=$GradientAccumulationSteps",
     "--max_train_steps=$MaxTrainSteps",
     "--learning_rate=$LearningRate",
     "--lr_scheduler=constant",
@@ -56,8 +68,11 @@ $trainArgs = @(
     "--rank=$Rank",
     "--output_dir=$OutputDir",
     "--checkpointing_steps=100",
-    "--validation_prompt=$ValidationPrompt",
     "--seed=$Seed"
 )
+
+if (-not $NoValidation) {
+    $trainArgs += "--validation_prompt=$ValidationPrompt"
+}
 
 & $Python -m accelerate.commands.launch --mixed_precision=$MixedPrecision @trainArgs
