@@ -11,15 +11,18 @@ import numpy as np
 
 
 DEFAULT_PROMPT = (
-    "a contemporary street scene transformed into a neoclassical oil painting, "
-    "Jacques-Louis David and Jean-Auguste-Dominique Ingres inspired, balanced heroic composition, "
-    "muted warm palette, marble-like skin and stone light, dramatic chiaroscuro, smooth academic brushwork, "
-    "museum painting, refined realism, elegant classical architecture mood"
+    "style transfer only, preserve the original street layout, perspective, camera angle, "
+    "object positions, buildings, road shape, vehicles, people, and scene composition, "
+    "transform the visual appearance into a restrained neoclassical oil painting, "
+    "academic realism, smooth classical brushwork, muted warm earth palette, "
+    "soft chiaroscuro, marble-like stone light, museum canvas texture, elegant classical atmosphere"
 )
 
 DEFAULT_NEGATIVE_PROMPT = (
-    "cartoon, anime, candy colors, mosaic filter, pop art, glitch, cyberpunk, distorted faces, "
-    "extra limbs, low quality, blurry, text, watermark"
+    "new scene, changed layout, different camera angle, altered perspective, added buildings, "
+    "removed objects, warped road, distorted geometry, deformed vehicles, distorted faces, "
+    "extra limbs, cartoon, anime, candy colors, mosaic filter, pop art, glitch, cyberpunk, "
+    "fantasy, abstract, low quality, blurry, text, watermark"
 )
 
 WINDOW_NAME = "Diffusion Neoclassical Street Translation"
@@ -99,14 +102,22 @@ def load_pipeline(args: argparse.Namespace):
 
 
 def generate_image(pipe, init_image: Image.Image, args: argparse.Namespace) -> Image.Image:
-    result = pipe(
-        prompt=args.prompt,
-        negative_prompt=args.negative_prompt,
-        image=init_image,
-        strength=args.strength,
-        guidance_scale=args.guidance,
-        num_inference_steps=args.steps,
-    )
+    call_kwargs = {
+        "prompt": args.prompt,
+        "negative_prompt": args.negative_prompt,
+        "image": init_image,
+        "strength": args.strength,
+        "guidance_scale": args.guidance,
+        "num_inference_steps": args.steps,
+    }
+    if args.seed is not None:
+        import torch
+
+        device = getattr(pipe, "_execution_device", getattr(pipe, "device", "cpu"))
+        generator_device = "cpu" if str(device).startswith("mps") else device
+        call_kwargs["generator"] = torch.Generator(device=generator_device).manual_seed(args.seed)
+
+    result = pipe(**call_kwargs)
     return result.images[0]
 
 
@@ -250,8 +261,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--height", type=int, default=480, help="Camera height.")
     parser.add_argument("--size", type=int, default=512, help="Longest side passed into diffusion model.")
     parser.add_argument("--steps", type=int, default=3, help="Inference steps. SD-Turbo usually uses 1-4.")
-    parser.add_argument("--strength", type=float, default=0.58, help="Image-to-image strength.")
+    parser.add_argument("--strength", type=float, default=0.5, help="Image-to-image strength. Lower values preserve more of the source image.")
     parser.add_argument("--guidance", type=float, default=0.0, help="Guidance scale. SD-Turbo usually uses 0.")
+    parser.add_argument("--seed", type=int, help="Optional random seed for repeatable comparisons.")
     parser.add_argument("--prompt", default=DEFAULT_PROMPT, help="Positive prompt.")
     parser.add_argument("--negative-prompt", default=DEFAULT_NEGATIVE_PROMPT, help="Negative prompt.")
     parser.add_argument("--mirror", action="store_true", help="Mirror camera preview.")

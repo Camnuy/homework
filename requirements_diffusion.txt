@@ -1,6 +1,8 @@
 accelerate
+datasets
 diffusers
 opencv-python
+peft
 pillow
 safetensors
 torch

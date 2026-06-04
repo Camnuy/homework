@@ -99,6 +99,30 @@ python src/diffusion_neoclassical_demo.py --image path\to\street_photo.jpg
 
 Version 2 does not include training yet. The reason is practical: diffusion inference can be tested first, then a later version can add a LoRA training workflow once the dataset and aesthetic target are clearer.
 
+Version 3 starts the LoRA training workflow. It adds a neoclassical style dataset structure and helper scripts:
+
+```text
+data/neoclassical_lora/
+scripts/prepare_lora_dataset.py
+scripts/run_lora_training.ps1
+src/lora_comparison_demo.py
+docs/version_3_lora_training_plan_zh.md
+```
+
+The Version 2 prompt has also been adjusted toward style transfer only: preserve the original street layout and change the visual rendering style, instead of asking the model to invent a new scene.
+
+Prepare local LoRA metadata:
+
+```powershell
+python scripts\prepare_lora_dataset.py --write-missing-captions
+```
+
+After a LoRA has been trained, compare baseline and LoRA outputs:
+
+```powershell
+python src\lora_comparison_demo.py --image path\to\street.jpg --lora lora_outputs\neoclassical_style_lora
+```
+
 The planned next stage is to add training:
 
 1. use a large image-to-image model for neoclassical street translation

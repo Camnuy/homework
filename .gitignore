@@ -232,3 +232,13 @@ media/audio/rave-generated/*
 stable-audio-tools
 platune-mini
 audio_mono-mic
+
+# Project generated assets and external training code
+outputs/
+external/
+lora_outputs/
+data/neoclassical_lora/metadata.jsonl
+data/neoclassical_lora/images/*
+data/neoclassical_lora/captions/*.txt
+!data/neoclassical_lora/images/.gitkeep
+!data/neoclassical_lora/captions/.gitkeep
