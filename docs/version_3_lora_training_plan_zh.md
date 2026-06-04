@@ -40,11 +40,24 @@ python src\diffusion_neoclassical_demo.py --image path\to\street.jpg --lora path
 ```text
 scripts/download_neoclassical_references.py
 scripts/prepare_lora_dataset.py
+scripts/export_lora_dataset.ps1
 scripts/run_lora_training.ps1
 src/lora_comparison_demo.py
 ```
 
-第一个脚本负责从博物馆开放 API 下载候选参考图，并记录来源。第二个脚本负责生成 Diffusers 训练常用的 `metadata.jsonl`。第三个脚本负责拉取 Hugging Face Diffusers 官方 examples，并调用其中的 `train_text_to_image_lora.py` 训练脚本。第四个脚本用于在训练完成后比较“无 LoRA”和“有 LoRA”的效果。
+第一个脚本负责从博物馆开放 API 下载候选参考图，并记录来源。第二个脚本负责生成 Diffusers 训练常用的 `metadata.jsonl`。第三个脚本负责把本地数据集打包，方便上传到 Colab 或 GPU 机器。第四个脚本负责拉取 Hugging Face Diffusers 官方 examples，并调用其中的 `train_text_to_image_lora.py` 训练脚本。第五个脚本用于在训练完成后比较“无 LoRA”和“有 LoRA”的效果。
+
+如果要把数据转到 Colab 或 GPU 机器，可以运行：
+
+```powershell
+.\scripts\export_lora_dataset.ps1
+```
+
+它会生成：
+
+```text
+release/neoclassical_lora_dataset.zip
+```
 
 ## 3. 数据集准备
 

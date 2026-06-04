@@ -105,9 +105,11 @@ Version 3 starts the LoRA training workflow. It adds a neoclassical style datase
 data/neoclassical_lora/
 scripts/download_neoclassical_references.py
 scripts/prepare_lora_dataset.py
+scripts/export_lora_dataset.ps1
 scripts/run_lora_training.ps1
 src/lora_comparison_demo.py
 docs/version_3_lora_training_plan_zh.md
+docs/version_3_gpu_training_runbook_zh.md
 ```
 
 The Version 2 prompt has also been adjusted toward style transfer only: preserve the original street layout and change the visual rendering style, instead of asking the model to invent a new scene.
@@ -122,6 +124,12 @@ Prepare local LoRA metadata:
 
 ```powershell
 python scripts\prepare_lora_dataset.py --write-missing-captions
+```
+
+Export the local training dataset for Colab or another GPU machine:
+
+```powershell
+.\scripts\export_lora_dataset.ps1
 ```
 
 After a LoRA has been trained, compare baseline and LoRA outputs:

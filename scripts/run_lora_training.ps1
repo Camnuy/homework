@@ -10,7 +10,8 @@ param(
     [double]$LearningRate = 0.0001,
     [int]$Rank = 8,
     [int]$Seed = 42,
-    [string]$ValidationPrompt = "a street photograph transformed only in visual style into a restrained neoclassical oil painting"
+    [string]$ValidationPrompt = "a street photograph transformed only in visual style into a restrained neoclassical oil painting",
+    [switch]$AllowCpu
 )
 
 $ErrorActionPreference = "Stop"
@@ -18,6 +19,11 @@ $env:PYTHONIOENCODING = "utf-8"
 
 if (!(Test-Path $Python)) {
     throw "Python environment not found: $Python"
+}
+
+$cudaAvailable = & $Python -c "import torch; print('1' if torch.cuda.is_available() else '0')"
+if ($cudaAvailable.Trim() -ne "1" -and -not $AllowCpu) {
+    throw "CUDA GPU is not available. LoRA training on CPU will be extremely slow. Run on a GPU machine, or pass -AllowCpu only for a tiny smoke test."
 }
 
 if (!(Test-Path $DiffusersRepo)) {
