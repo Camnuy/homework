@@ -145,6 +145,25 @@ After a LoRA has been trained, compare baseline and LoRA outputs:
 python src\lora_comparison_demo.py --image path\to\street.jpg --lora lora_outputs\neoclassical_style_lora
 ```
 
+Version 4 adds a ControlNet Canny prototype for stronger structure preservation:
+
+```text
+src/controlnet_neoclassical_demo.py
+docs/version_4_controlnet_canny_zh.md
+```
+
+Run a ControlNet test:
+
+```powershell
+python src\controlnet_neoclassical_demo.py --image path\to\street.jpg --size 384 --steps 4 --strength 0.38 --control-scale 1.0 --guidance 0 --no-window
+```
+
+Run ControlNet with a LoRA comparison:
+
+```powershell
+python src\controlnet_neoclassical_demo.py --image path\to\street.jpg --lora lora_outputs\neoclassical_style_lora_cpu_trial --size 384 --steps 4 --strength 0.38 --control-scale 1.0 --guidance 0 --no-window
+```
+
 The planned next stage is to add training:
 
 1. use a large image-to-image model for neoclassical street translation
