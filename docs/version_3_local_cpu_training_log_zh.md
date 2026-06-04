@@ -135,6 +135,13 @@ python src\diffusion_neoclassical_demo.py --image outputs\test_street_input.png 
 
 结果：程序成功加载 LoRA，并保存原图、生成图和对比图。
 
+后续代码已经改成：图片模式只要传入 `--lora`，就会自动保存四张图：
+
+1. 原图
+2. 无 LoRA 的 baseline 结果
+3. 有 LoRA 的结果
+4. 三栏对比图
+
 ## 8. 当前结论
 
 本地 CPU 可以跑通第三版训练闭环，但只适合小规模验证。

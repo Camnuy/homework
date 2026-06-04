@@ -97,6 +97,12 @@ Run it on one image:
 python src/diffusion_neoclassical_demo.py --image path\to\street_photo.jpg
 ```
 
+When `--lora` is used in image mode, the script saves both the baseline output and the LoRA output:
+
+```powershell
+python src/diffusion_neoclassical_demo.py --image path\to\street_photo.jpg --lora lora_outputs\neoclassical_style_lora_cpu_trial
+```
+
 Version 2 does not include training yet. The reason is practical: diffusion inference can be tested first, then a later version can add a LoRA training workflow once the dataset and aesthetic target are clearer.
 
 Version 3 starts the LoRA training workflow. It adds a neoclassical style dataset structure and helper scripts:

@@ -146,12 +146,73 @@ def save_generation_pair(original: Image.Image, generated: Image.Image, prefix: 
     return paths
 
 
+def make_lora_comparison_image(original: Image.Image, baseline: Image.Image, lora: Image.Image) -> Image.Image:
+    from PIL import Image
+
+    baseline = baseline.convert("RGB")
+    original = original.convert("RGB").resize(baseline.size, Image.Resampling.LANCZOS)
+    lora = lora.convert("RGB").resize(baseline.size, Image.Resampling.LANCZOS)
+    comparison = Image.new("RGB", (baseline.width * 3, baseline.height), (20, 18, 16))
+    comparison.paste(original, (0, 0))
+    comparison.paste(baseline, (baseline.width, 0))
+    comparison.paste(lora, (baseline.width * 2, 0))
+    return comparison
+
+
+def save_lora_comparison(
+    original: Image.Image,
+    baseline: Image.Image,
+    lora: Image.Image,
+    prefix: str = "diffusion_lora_compare",
+) -> dict[str, Path]:
+    out_dir = Path("outputs")
+    out_dir.mkdir(exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+    paths = {
+        "original": out_dir / f"{prefix}_original_{timestamp}.png",
+        "baseline": out_dir / f"{prefix}_baseline_{timestamp}.png",
+        "lora": out_dir / f"{prefix}_lora_{timestamp}.png",
+        "triptych": out_dir / f"{prefix}_triptych_{timestamp}.png",
+    }
+    original.convert("RGB").save(paths["original"])
+    baseline.convert("RGB").save(paths["baseline"])
+    lora.convert("RGB").save(paths["lora"])
+    make_lora_comparison_image(original, baseline, lora).save(paths["triptych"])
+    return paths
+
+
 def run_image(args: argparse.Namespace) -> None:
     from PIL import Image
 
-    pipe, _ = load_pipeline(args)
     source = Image.open(args.image)
     init_image = resize_for_diffusion(source, args.size)
+
+    if args.lora:
+        baseline_args = argparse.Namespace(**vars(args))
+        baseline_args.lora = None
+        pipe, _ = load_pipeline(baseline_args)
+
+        print("Generating baseline image without LoRA...")
+        baseline = generate_image(pipe, init_image, baseline_args)
+
+        print(f"Loading LoRA for comparison: {args.lora}")
+        pipe.load_lora_weights(args.lora)
+        print("Generating image with LoRA...")
+        output = generate_image(pipe, init_image, args)
+
+        paths = save_lora_comparison(init_image, baseline, output)
+        print(f"Saved original: {paths['original']}")
+        print(f"Saved baseline: {paths['baseline']}")
+        print(f"Saved LoRA: {paths['lora']}")
+        print(f"Saved triptych: {paths['triptych']}")
+
+        if not args.no_window:
+            cv2.imshow(WINDOW_NAME, pil_to_cv(make_lora_comparison_image(init_image, baseline, output)))
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+        return
+
+    pipe, _ = load_pipeline(args)
     output = generate_image(pipe, init_image, args)
     paths = save_generation_pair(init_image, output, "diffusion_neoclassical")
     print(f"Saved original: {paths['original']}")
