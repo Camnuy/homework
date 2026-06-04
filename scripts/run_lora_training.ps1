@@ -22,6 +22,9 @@ $projectRoot = (Resolve-Path ".").Path
 $env:HF_HOME = Join-Path $projectRoot ".cache\huggingface"
 $env:HUGGINGFACE_HUB_CACHE = Join-Path $env:HF_HOME "hub"
 $env:HF_HUB_DISABLE_SYMLINKS_WARNING = "1"
+$env:HF_HUB_DISABLE_XET = "1"
+$env:HF_HUB_DOWNLOAD_TIMEOUT = "120"
+$env:HF_HUB_ETAG_TIMEOUT = "30"
 
 if (!(Test-Path $Python)) {
     throw "Python environment not found: $Python"
