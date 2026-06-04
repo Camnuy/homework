@@ -1,0 +1,15 @@
+transformers
+datasets
+tiktoken
+wandb
+tqdm
+Pillow
+numpy
+opencv-python
+imageio
+regex
+sounddevice
+gdown
+gallery-dl
+ultralytics
+wget
