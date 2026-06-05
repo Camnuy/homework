@@ -1,10 +1,10 @@
-# Version 5：IP-Adapter 参考图风格迁移
+# Version 4 / 5：ControlNet + IP-Adapter 参考图风格迁移
 
 ## 目标
 
-前面的版本主要依赖文字 prompt、ControlNet 或 LoRA 来接近“新古典主义风格”。Version 5 加入 IP-Adapter，让系统可以额外输入一张新古典主义绘画作为风格参考图。
+当前正式路线里，Version 4 是 **ControlNet + IP-Adapter**，Version 5 是在同一条管线上再叠加一个 **light LoRA**。这一版的核心是：除了文字 prompt 之外，再额外输入一张新古典主义绘画作为风格参考图，同时继续用 ControlNet 保护源图像结构。
 
-本版本的目标不是生成新的街景，而是做图像风格迁移：
+本版本的目标不是生成新的场景，而是做图像风格迁移：
 
 ```text
 源图像：提供内容、构图、透视和物体位置
@@ -39,18 +39,24 @@ src/ip_adapter_style_transfer_demo.py
 src/method_comparison_demo.py
 ```
 
-## 单独运行 IP-Adapter
+## 单独运行 V4：ControlNet + IP-Adapter
 
 ```powershell
-python src\ip_adapter_style_transfer_demo.py --image path\to\source.jpg --style-image path\to\neoclassical_reference.jpg --size 384 --steps 12 --strength 0.45 --ip-adapter-scale 0.75 --no-window
+python src\ip_adapter_style_transfer_demo.py --image path\to\source.jpg --style-image path\to\neoclassical_reference.jpg --size 512 --steps 28 --strength 0.32 --control-scale 0.7 --ip-adapter-scale 0.5 --guidance 5.0 --style-square-mode squash --no-window
 ```
 
 如果不传 `--style-image`，脚本会尝试从本地 `data/neoclassical_lora` 目录自动寻找一张参考图。
 
+## 单独运行 V5：V4 + light LoRA
+
+```powershell
+python src\ip_adapter_style_transfer_demo.py --image path\to\source.jpg --style-image path\to\neoclassical_reference.jpg --lora lora_outputs\neoclassical_style_lora_sd15 --size 512 --steps 28 --strength 0.32 --control-scale 0.7 --ip-adapter-scale 0.5 --guidance 5.0 --style-square-mode squash --no-window
+```
+
 ## 生成整体对比
 
 ```powershell
-python src\method_comparison_demo.py --image path\to\source.jpg --style-image path\to\neoclassical_reference.jpg --size 384 --steps 12 --strength 0.45 --control-scale 0.9 --guidance 6.5
+python src\method_comparison_demo.py --image path\to\source.jpg --style-image path\to\neoclassical_reference.jpg --size 512 --steps 28 --strength 0.32 --control-scale 0.7 --guidance 5.0 --ip-adapter-scale 0.5 --style-square-mode squash
 ```
 
 整体对比图包含：
@@ -59,7 +65,7 @@ python src\method_comparison_demo.py --image path\to\source.jpg --style-image pa
 2. V1 OpenCV
 3. V2 Stable Diffusion prompt-only
 4. V3 ControlNet
-5. V4 IP-Adapter
-6. V5 ControlNet + LoRA
+5. V4 ControlNet + IP-Adapter
+6. V5 ControlNet + IP-Adapter + LoRA
 
 输出保存在 `outputs/`。其中 `method_compare_grid_时间戳.png` 是最适合放进报告或 weblog 的总对比图。

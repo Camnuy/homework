@@ -1,18 +1,24 @@
 # Neoclassical Style Transfer
 
-This repository contains the first prototype for my EMI 2026 final project.
+This repository contains the active technical development line for my EMI 2026 final project.
 
-The project explores how to transform a source image or camera frame into a neoclassical oil-painting style while preserving the original content and composition. The work is developed as a sequence of prototypes, starting from traditional image processing and moving toward Stable Diffusion, ControlNet, IP-Adapter reference-image guidance, and LoRA style training.
+The project explores how to transform a source image or camera frame into a neoclassical oil-painting style while preserving the original content, composition, and geometry. The work is developed as a sequence of prototypes, starting from traditional image processing and moving toward Stable Diffusion, ControlNet, IP-Adapter reference-image guidance, LoRA style training, and InstantStyle-style block-wise control.
+
+If this repository is cloned onto another machine and needs to be continued with Codex, start here:
+
+```text
+docs/CODEX_SERVER_HANDOFF_zh.md
+```
 
 ## Current Prototype
 
-The first prototype is:
+The first prototype is stored in a file with a historical name:
 
 ```text
 src/neoclassical_street_demo.py
 ```
 
-It uses real-time image processing to create a neoclassical oil-painting look:
+It should now be understood as a **real-time neoclassical style-transfer baseline**, not a street-only project. The script uses real-time image processing to create a neoclassical oil-painting look:
 
 1. edge-aware smoothing
 2. muted colour palette
@@ -63,15 +69,16 @@ While the camera window is open:
 
 ## Project Direction
 
-The project is organized around five technical versions:
+The project is organized around six technical versions:
 
 | Version | Method | Purpose |
 | --- | --- | --- |
-| V1 | OpenCV visual filter | Fast baseline without Stable Diffusion |
+| V1 | OpenCV visual baseline | Fast handcrafted style-transfer baseline without Stable Diffusion |
 | V2 | Stable Diffusion img2img + style prompt | Use the source image as the content input and a text prompt as style guidance |
 | V3 | Stable Diffusion img2img + ControlNet Canny | Preserve source structure more strongly through edge control |
-| V4 | Stable Diffusion img2img + ControlNet + IP-Adapter | Use a neoclassical painting reference image to guide the style |
-| V5 | Stable Diffusion img2img + ControlNet + trained LoRA | Test whether a small trained style adapter improves neoclassical consistency |
+| V4 | Stable Diffusion img2img + ControlNet + IP-Adapter | Use a neoclassical painting reference image to guide the style while keeping layout |
+| V5 | Stable Diffusion img2img + ControlNet + IP-Adapter + light LoRA | Tighten neoclassical style consistency without letting LoRA replace content control |
+| V6 | Stable Diffusion img2img + ControlNet + InstantStyle-style IP-Adapter blocks | Restrict image-prompt injection to style-focused blocks for stronger style control with less layout drift |
 
 The current design goal is style transfer, not scene generation: the source image should keep its layout, perspective, objects, and geometry, while the rendering style changes toward restrained neoclassical oil painting.
 
@@ -124,7 +131,7 @@ python src/diffusion_neoclassical_demo.py --image path\to\source_photo.jpg --lor
 
 Version 2 does not include training yet. The reason is practical: diffusion inference can be tested first, then a later version can add a LoRA training workflow once the dataset and aesthetic target are clearer.
 
-Version 3 starts the LoRA training workflow. It adds a neoclassical style dataset structure and helper scripts:
+Supporting workflow: LoRA training for later V5 experiments. It adds a neoclassical style dataset structure and helper scripts:
 
 ```text
 data/neoclassical_lora/
@@ -164,7 +171,7 @@ After a LoRA has been trained, compare baseline and LoRA outputs:
 python src\lora_comparison_demo.py --image path\to\source.jpg --lora lora_outputs\neoclassical_style_lora_sd15
 ```
 
-Version 4 adds a ControlNet Canny prototype for stronger structure preservation:
+Version 3 adds a ControlNet Canny prototype for stronger structure preservation:
 
 ```text
 src/controlnet_neoclassical_demo.py
@@ -174,16 +181,10 @@ docs/version_4_controlnet_canny_zh.md
 Run a ControlNet test:
 
 ```powershell
-python src\controlnet_neoclassical_demo.py --image path\to\source.jpg --size 384 --steps 12 --strength 0.45 --control-scale 0.9 --guidance 6.5 --no-window
+python src\controlnet_neoclassical_demo.py --image path\to\source.jpg --size 512 --steps 28 --strength 0.32 --control-scale 0.7 --guidance 5.0 --canny-low 100 --canny-high 200 --no-window
 ```
 
-Run ControlNet with a LoRA comparison:
-
-```powershell
-python src\controlnet_neoclassical_demo.py --image path\to\source.jpg --lora lora_outputs\neoclassical_style_lora_sd15 --size 384 --steps 12 --strength 0.45 --control-scale 0.9 --guidance 6.5 --no-window
-```
-
-Version 5 adds an IP-Adapter prototype for reference-guided style transfer:
+Version 4 adds an IP-Adapter prototype on top of ControlNet for reference-guided style transfer:
 
 ```text
 src/ip_adapter_style_transfer_demo.py
@@ -192,16 +193,42 @@ docs/version_5_ip_adapter_zh.md
 
 IP-Adapter uses a separate style reference image. In this project, that reference should be a neoclassical painting. It uses the same SD1.5 model family as the other diffusion branches, so the comparison is easier to interpret.
 
-Run an IP-Adapter test:
+Two implementation details matter a lot here:
+
+1. the style reference is square-preprocessed before CLIP encoding because the official IP-Adapter README notes square references work better
+2. the default `--ip-adapter-scale` is now `0.5`, matching Tencent IP-Adapter guidance for balanced multimodal prompting
+
+Run a ControlNet + IP-Adapter test:
 
 ```powershell
-python src\ip_adapter_style_transfer_demo.py --image path\to\source.jpg --style-image path\to\neoclassical_reference.jpg --size 384 --steps 12 --strength 0.45 --ip-adapter-scale 0.75 --no-window
+python src\ip_adapter_style_transfer_demo.py --image path\to\source.jpg --style-image path\to\neoclassical_reference.jpg --size 512 --steps 28 --strength 0.32 --control-scale 0.7 --ip-adapter-scale 0.5 --guidance 5.0 --style-square-mode squash --no-window
 ```
 
-Generate a one-image comparison grid. The grid saves the original image plus five method outputs:
+Version 5 keeps the V4 pipeline and adds a light LoRA:
 
 ```powershell
-python src\method_comparison_demo.py --image path\to\source.jpg --style-image path\to\neoclassical_reference.jpg --size 384 --steps 12 --strength 0.45 --control-scale 0.9 --guidance 6.5
+python src\ip_adapter_style_transfer_demo.py --image path\to\source.jpg --style-image path\to\neoclassical_reference.jpg --lora lora_outputs\neoclassical_style_lora_sd15 --size 512 --steps 28 --strength 0.32 --control-scale 0.7 --ip-adapter-scale 0.5 --guidance 5.0 --style-square-mode squash --no-window
+```
+
+Version 6 adds an InstantStyle-style branch by using layer-wise IP-Adapter scales instead of activating IP-Adapter everywhere:
+
+```text
+src/instantstyle_neoclassical_demo.py
+docs/version_6_instantstyle_zh.md
+```
+
+This branch follows the official diffusers and InstantStyle guidance: use style-focused attention blocks only by default, and optionally enable style+layout blocks when needed.
+
+Run a V6 InstantStyle test:
+
+```powershell
+python src\instantstyle_neoclassical_demo.py --image path\to\source.jpg --style-image path\to\neoclassical_reference.jpg --size 512 --steps 30 --strength 0.35 --control-scale 0.7 --ip-adapter-scale 0.8 --instantstyle-mode style --guidance 5.0 --style-square-mode squash --no-window
+```
+
+Generate a one-image comparison grid. The grid saves the original image plus six method outputs:
+
+```powershell
+python src\method_comparison_demo.py --image path\to\source.jpg --style-image path\to\neoclassical_reference.jpg --size 512 --steps 28 --strength 0.32 --control-scale 0.7 --guidance 5.0 --ip-adapter-scale 0.5 --instantstyle-scale 0.8 --style-square-mode squash
 ```
 
 The comparison script saves:
@@ -210,8 +237,17 @@ The comparison script saves:
 2. V1 OpenCV output
 3. V2 Stable Diffusion prompt-only output
 4. V3 ControlNet output
-5. V4 IP-Adapter reference-guided output
-6. V5 ControlNet + LoRA output
+5. V4 ControlNet + IP-Adapter output
+6. V5 ControlNet + IP-Adapter + LoRA output
+7. V6 InstantStyle output
+
+## Narrative Note
+
+Some internal filenames still keep earlier labels such as `neoclassical_street_demo.py`. Those names are now compatibility artifacts for scripts and packaging rather than the definition of the project.
+
+The project narrative is unified as:
+
+**Neoclassical Style Transfer**
 
 ## AI and Third-party Resources
 

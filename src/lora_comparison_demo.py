@@ -12,6 +12,7 @@ from diffusion_neoclassical_demo import (
     DEFAULT_PROMPT,
     generate_image,
     load_pipeline,
+    resolve_lora_path,
     resize_for_diffusion,
 )
 
@@ -80,8 +81,11 @@ def main() -> None:
     print("Generating baseline image without LoRA...")
     baseline = generate_image(pipe, init_image, baseline_args)
 
-    print(f"Loading LoRA for comparison: {args.lora}")
-    pipe.load_lora_weights(args.lora)
+    lora_path = resolve_lora_path(args.lora)
+    if not lora_path:
+        raise SystemExit(f"LoRA path not found: {args.lora}")
+    print(f"Loading LoRA for comparison: {lora_path}")
+    pipe.load_lora_weights(lora_path)
     print("Generating image with LoRA...")
     lora_output = generate_image(pipe, init_image, args)
 

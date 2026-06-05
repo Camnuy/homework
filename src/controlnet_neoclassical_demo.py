@@ -17,7 +17,9 @@ from diffusion_neoclassical_demo import (
     make_comparison_image,
     make_lora_comparison_image,
     pil_to_cv,
+    resolve_cached_model_source,
     resize_for_diffusion,
+    safety_checker_load_kwargs,
 )
 
 
@@ -59,19 +61,23 @@ def generator_for(pipe, seed: int | None):
 def load_pipeline(args: argparse.Namespace):
     torch, ControlNetModel, StableDiffusionControlNetImg2ImgPipeline = import_controlnet_stack()
     device, dtype = choose_device(torch)
+    model_source = resolve_cached_model_source(args.model)
+    controlnet_source = resolve_cached_model_source(args.controlnet)
     print(f"Loading base model: {args.model}")
+    if model_source != args.model:
+        print(f"Resolved local base-model cache: {model_source}")
     print(f"Loading ControlNet: {args.controlnet}")
+    if controlnet_source != args.controlnet:
+        print(f"Resolved local ControlNet cache: {controlnet_source}")
     print(f"Device: {device} | dtype: {dtype}")
     if device == "cpu":
         print("Warning: ControlNet on CPU is slow. Use low --size/--steps for tests.")
 
-    controlnet = ControlNetModel.from_pretrained(args.controlnet, torch_dtype=dtype)
-    load_kwargs = {}
-    if args.disable_safety_checker:
-        load_kwargs["safety_checker"] = None
+    controlnet = ControlNetModel.from_pretrained(controlnet_source, torch_dtype=dtype)
+    load_kwargs = safety_checker_load_kwargs(model_source, args.disable_safety_checker)
 
     pipe = StableDiffusionControlNetImg2ImgPipeline.from_pretrained(
-        args.model,
+        model_source,
         controlnet=controlnet,
         torch_dtype=dtype,
         **load_kwargs,
@@ -203,12 +209,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--controlnet", default=DEFAULT_CONTROLNET, help="SD1.5 Canny ControlNet model.")
     parser.add_argument("--lora", help="Optional trained LoRA directory or safetensors file.")
     parser.add_argument("--size", type=int, default=512, help="Longest side passed into the model.")
-    parser.add_argument("--steps", type=int, default=12, help="Inference steps. Increase for quality, decrease for CPU tests.")
-    parser.add_argument("--strength", type=float, default=0.45, help="Img2img strength. Lower preserves more structure.")
-    parser.add_argument("--guidance", type=float, default=6.5, help="Classifier-free guidance scale.")
-    parser.add_argument("--control-scale", type=float, default=0.9, help="How strongly ControlNet follows the Canny edges.")
-    parser.add_argument("--canny-low", type=int, default=80, help="Canny low threshold.")
-    parser.add_argument("--canny-high", type=int, default=180, help="Canny high threshold.")
+    parser.add_argument("--steps", type=int, default=28, help="Inference steps. Increase for quality, decrease for CPU tests.")
+    parser.add_argument("--strength", type=float, default=0.32, help="Img2img strength. Lower preserves more structure.")
+    parser.add_argument("--guidance", type=float, default=5.0, help="Classifier-free guidance scale.")
+    parser.add_argument("--control-scale", type=float, default=0.7, help="How strongly ControlNet follows the Canny edges.")
+    parser.add_argument("--canny-low", type=int, default=100, help="Canny low threshold.")
+    parser.add_argument("--canny-high", type=int, default=200, help="Canny high threshold.")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for repeatable comparisons.")
     parser.add_argument("--prompt", default=DEFAULT_PROMPT, help="Positive prompt.")
     parser.add_argument("--negative-prompt", default=DEFAULT_NEGATIVE_PROMPT, help="Negative prompt.")

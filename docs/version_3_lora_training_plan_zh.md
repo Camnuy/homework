@@ -8,10 +8,10 @@
 
 预期效果：
 
-1. 街景结构大体保留
+1. 源图像结构大体保留
 2. 画面更像古典油画，而不是普通滤镜
 3. 色彩更克制，有暖色光影、学院派构图和古典建筑质感
-4. 人物、街道、建筑不会完全丢失原图关系
+4. 人物、建筑、物体不会完全丢失原图关系
 5. 可以对比“无 LoRA”和“有 LoRA”的生成差异
 
 ## 2. 技术路线
@@ -125,7 +125,7 @@ python scripts\download_neoclassical_references.py --limit 30
 
 当前电脑没有 NVIDIA GPU 时，可以先只运行数据准备脚本，不建议直接训练。
 
-训练完成后，可以用同一张街景图对比第二版和第三版：
+训练完成后，可以用同一张测试图对比第二版和第三版：
 
 ```powershell
 python src\lora_comparison_demo.py --image path\to\source.jpg --lora lora_outputs\neoclassical_style_lora_sd15
@@ -158,7 +158,7 @@ python src\lora_comparison_demo.py --image path\to\source.jpg --lora lora_output
 
 第三版完成时，至少应该能展示：
 
-1. 一张原始街景图
+1. 一张原始输入图
 2. 第二版无训练结果
 3. 第三版 LoRA 结果
 4. 三者对比图

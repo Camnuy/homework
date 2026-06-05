@@ -130,7 +130,7 @@ output: lora_outputs/neoclassical_style_lora_cpu_trial/pytorch_lora_weights.safe
 命令：
 
 ```powershell
-python src\diffusion_neoclassical_demo.py --image outputs\test_street_input.png --lora lora_outputs\neoclassical_style_lora_cpu_trial --size 128 --steps 2 --strength 0.5 --guidance 0 --seed 42 --no-window --quiet --disable-safety-checker
+python src\diffusion_neoclassical_demo.py --image outputs\test_source_input.png --lora lora_outputs\neoclassical_style_lora_cpu_trial --size 128 --steps 2 --strength 0.5 --guidance 0 --seed 42 --no-window --quiet --disable-safety-checker
 ```
 
 结果：程序成功加载 LoRA，并保存原图、生成图和对比图。
@@ -152,4 +152,4 @@ python src\diffusion_neoclassical_demo.py --image outputs\test_street_input.png 
 2. 把训练步数提高到 400-800
 3. 使用 NVIDIA GPU
 4. 扩充数据集到 30-60 张
-5. 用真实街景照片做无 LoRA / 有 LoRA 对比
+5. 用真实源图像做无 LoRA / 有 LoRA 对比

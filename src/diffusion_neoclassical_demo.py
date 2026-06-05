@@ -11,6 +11,20 @@ import cv2
 import numpy as np
 
 
+def _project_root() -> Path:
+    here = Path(__file__).resolve().parent
+    if (here / "EMI-2026-main").exists():
+        return here
+    if (here.parent / "README.md").exists():
+        return here.parent
+    return here
+
+
+PROJECT_ROOT = _project_root()
+HF_CACHE_ROOT = PROJECT_ROOT / ".cache" / "huggingface"
+
+os.environ.setdefault("HF_HOME", str(HF_CACHE_ROOT))
+os.environ.setdefault("HUGGINGFACE_HUB_CACHE", str(HF_CACHE_ROOT / "hub"))
 os.environ.setdefault("HF_HUB_DISABLE_XET", "1")
 os.environ.setdefault("HF_HUB_DOWNLOAD_TIMEOUT", "120")
 os.environ.setdefault("HF_HUB_ETAG_TIMEOUT", "30")
@@ -78,28 +92,124 @@ def pil_to_cv(image: Image.Image) -> np.ndarray:
     return cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
 
 
+def resolve_cached_model_source(model_id_or_path: str | Path) -> str:
+    path = Path(model_id_or_path)
+    if path.exists():
+        return str(path)
+
+    cache_roots = [HF_CACHE_ROOT / "hub"]
+    env_cache = os.environ.get("HUGGINGFACE_HUB_CACHE")
+    if env_cache:
+        env_cache_path = Path(env_cache)
+        if env_cache_path not in cache_roots:
+            cache_roots.append(env_cache_path)
+
+    for cache_root in cache_roots:
+        cache_dir = cache_root / f"models--{str(model_id_or_path).replace('/', '--')}"
+        if not cache_dir.exists():
+            continue
+
+        ref_file = cache_dir / "refs" / "main"
+        if ref_file.exists():
+            revision = ref_file.read_text(encoding="utf-8").strip()
+            snapshot = cache_dir / "snapshots" / revision
+            if snapshot.exists():
+                return str(snapshot)
+
+        snapshots_dir = cache_dir / "snapshots"
+        if snapshots_dir.exists():
+            snapshots = sorted(
+                (candidate for candidate in snapshots_dir.iterdir() if candidate.is_dir()),
+                key=lambda candidate: candidate.stat().st_mtime,
+                reverse=True,
+            )
+            if snapshots:
+                return str(snapshots[0])
+
+    return str(model_id_or_path)
+
+
+def safety_checker_load_kwargs(model_source: str | Path, disable_requested: bool) -> dict[str, object]:
+    if disable_requested:
+        return {"safety_checker": None, "requires_safety_checker": False}
+
+    path = Path(model_source)
+    if path.exists():
+        safety_dir = path / "safety_checker"
+        if safety_dir.exists():
+            weight_files = (
+                safety_dir / "model.safetensors",
+                safety_dir / "pytorch_model.bin",
+                safety_dir / "diffusion_pytorch_model.safetensors",
+                safety_dir / "diffusion_pytorch_model.bin",
+            )
+            if not any(candidate.exists() for candidate in weight_files):
+                print("Local snapshot is missing safety-checker weights; disabling the local safety checker.")
+                return {"safety_checker": None, "requires_safety_checker": False}
+
+    return {}
+
+
+def resolve_lora_path(path_like: str | Path | None) -> str | None:
+    if not path_like:
+        return None
+
+    path = Path(path_like)
+    if not path.exists():
+        return None
+
+    if path.is_file():
+        return str(path.parent)
+
+    if (path / "pytorch_lora_weights.safetensors").exists():
+        return str(path)
+
+    checkpoints = []
+    for candidate in path.glob("checkpoint-*"):
+        if candidate.is_dir():
+            try:
+                step = int(candidate.name.split("-", 1)[1])
+            except (IndexError, ValueError):
+                step = -1
+            checkpoints.append((step, candidate))
+
+    for _, checkpoint in sorted(checkpoints, reverse=True):
+        if (checkpoint / "pytorch_lora_weights.safetensors").exists():
+            return str(checkpoint)
+
+    nested = sorted(path.rglob("pytorch_lora_weights.safetensors"))
+    if nested:
+        return str(nested[-1].parent)
+
+    return str(path)
+
+
 def load_pipeline(args: argparse.Namespace):
     torch, AutoPipelineForImage2Image = import_diffusion_stack()
     device, dtype = choose_device(torch)
+    model_source = resolve_cached_model_source(args.model)
     print(f"Loading model: {args.model}")
+    if model_source != args.model:
+        print(f"Resolved local model cache: {model_source}")
     print(f"Device: {device} | dtype: {dtype}")
     if device == "cpu":
         print("Warning: CPU diffusion will be slow. For live use and LoRA training, use an NVIDIA GPU.")
 
-    load_kwargs = {}
-    if args.disable_safety_checker:
-        load_kwargs["safety_checker"] = None
+    load_kwargs = safety_checker_load_kwargs(model_source, args.disable_safety_checker)
 
     pipe = AutoPipelineForImage2Image.from_pretrained(
-        args.model,
+        model_source,
         torch_dtype=dtype,
         **load_kwargs,
     )
     pipe = pipe.to(device)
 
-    if args.lora:
-        print(f"Loading LoRA: {args.lora}")
-        pipe.load_lora_weights(args.lora)
+    lora_path = resolve_lora_path(getattr(args, "lora", None))
+    if getattr(args, "lora", None) and not lora_path:
+        raise SystemExit(f"LoRA path not found: {args.lora}")
+    if lora_path:
+        print(f"Loading LoRA: {lora_path}")
+        pipe.load_lora_weights(lora_path)
 
     if hasattr(pipe, "set_progress_bar_config"):
         pipe.set_progress_bar_config(disable=args.quiet)
@@ -202,8 +312,11 @@ def run_image(args: argparse.Namespace) -> None:
         print("Generating baseline image without LoRA...")
         baseline = generate_image(pipe, init_image, baseline_args)
 
-        print(f"Loading LoRA for comparison: {args.lora}")
-        pipe.load_lora_weights(args.lora)
+        lora_path = resolve_lora_path(args.lora)
+        if not lora_path:
+            raise SystemExit(f"LoRA path not found: {args.lora}")
+        print(f"Loading LoRA for comparison: {lora_path}")
+        pipe.load_lora_weights(lora_path)
         print("Generating image with LoRA...")
         output = generate_image(pipe, init_image, args)
 
@@ -327,9 +440,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--width", type=int, default=640, help="Camera width.")
     parser.add_argument("--height", type=int, default=480, help="Camera height.")
     parser.add_argument("--size", type=int, default=512, help="Longest side passed into diffusion model.")
-    parser.add_argument("--steps", type=int, default=12, help="Inference steps. Increase for quality, decrease for CPU tests.")
-    parser.add_argument("--strength", type=float, default=0.45, help="Image-to-image strength. Lower values preserve more of the source image.")
-    parser.add_argument("--guidance", type=float, default=6.5, help="Classifier-free guidance scale.")
+    parser.add_argument("--steps", type=int, default=20, help="Inference steps. Increase for quality, decrease for CPU tests.")
+    parser.add_argument("--strength", type=float, default=0.3, help="Image-to-image strength. Lower values preserve more of the source image.")
+    parser.add_argument("--guidance", type=float, default=5.5, help="Classifier-free guidance scale.")
     parser.add_argument("--seed", type=int, help="Optional random seed for repeatable comparisons.")
     parser.add_argument("--prompt", default=DEFAULT_PROMPT, help="Positive prompt.")
     parser.add_argument("--negative-prompt", default=DEFAULT_NEGATIVE_PROMPT, help="Negative prompt.")

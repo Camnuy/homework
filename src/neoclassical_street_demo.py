@@ -10,7 +10,7 @@ import cv2
 import numpy as np
 
 
-WINDOW_NAME = "Neoclassical Street Camera"
+WINDOW_NAME = "Neoclassical Style Transfer"
 
 
 @dataclass(frozen=True)
@@ -226,7 +226,7 @@ def save_frame(image: np.ndarray) -> Path:
     out_dir = Path("outputs")
     out_dir.mkdir(exist_ok=True)
     timestamp = time.strftime("%Y%m%d_%H%M%S")
-    path = out_dir / f"neoclassical_street_{timestamp}.jpg"
+    path = out_dir / f"neoclassical_style_transfer_{timestamp}.jpg"
     cv2.imwrite(str(path), image)
     return path
 
@@ -245,7 +245,7 @@ def run_camera(args: argparse.Namespace) -> None:
     capture.set(cv2.CAP_PROP_FRAME_WIDTH, args.width)
     capture.set(cv2.CAP_PROP_FRAME_HEIGHT, args.height)
 
-    print("Neoclassical street camera demo running.")
+    print("Neoclassical style-transfer demo running.")
     print("Keys: 1-3 variants, +/- strength, c compare, s save, q quit")
 
     last_time = time.perf_counter()
@@ -324,7 +324,7 @@ def self_test() -> None:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Real-time neoclassical street-camera demo.")
+    parser = argparse.ArgumentParser(description="Real-time neoclassical style-transfer demo.")
     parser.add_argument("--style", default="david", help="Initial style: david, ingres, or marble.")
     parser.add_argument("--camera", type=int, default=0, help="Camera index.")
     parser.add_argument("--width", type=int, default=640, help="Requested camera width.")

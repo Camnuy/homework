@@ -23,22 +23,26 @@ from diffusion_neoclassical_demo import (
     generate_image,
     load_pipeline as load_img2img_pipeline,
     pil_to_cv,
+    resolve_lora_path,
     resize_for_diffusion,
 )
 from ip_adapter_style_transfer_demo import (
+    DEFAULT_INSTANTSTYLE_MODE,
     DEFAULT_IMAGE_ENCODER_FOLDER,
     DEFAULT_IP_ADAPTER_REPO,
     DEFAULT_IP_ADAPTER_SUBFOLDER,
     DEFAULT_IP_ADAPTER_WEIGHT,
     DEFAULT_STYLE_DATASET_DIR,
+    apply_ip_adapter_scale,
     find_style_image,
     generate_ip_adapter_image,
     load_pipeline as load_ip_adapter_pipeline,
+    prepare_style_reference,
 )
 from neoclassical_street_demo import apply_neoclassical, variant_by_key
 
 
-DEFAULT_LORA = Path("lora_outputs/neoclassical_style_lora_sd15")
+DEFAULT_LORA = Path(__file__).resolve().parent.parent / "lora_outputs" / "neoclassical_style_lora_sd15"
 WINDOW_NAME = "Neoclassical Method Comparison"
 
 
@@ -113,6 +117,7 @@ def save_outputs(
     controlnet_image: Image.Image,
     ip_adapter_image: Image.Image,
     lora_image: Image.Image,
+    instantstyle_image: Image.Image,
     comparison: Image.Image,
     style_image: Image.Image | None = None,
 ) -> dict[str, Path]:
@@ -124,8 +129,9 @@ def save_outputs(
         "sd_prompt": output_dir / f"method_compare_v2_sd_prompt_{timestamp}.png",
         "canny": output_dir / f"method_compare_canny_{timestamp}.png",
         "controlnet": output_dir / f"method_compare_v3_controlnet_{timestamp}.png",
-        "ip_adapter": output_dir / f"method_compare_v4_ip_adapter_{timestamp}.png",
-        "controlnet_lora": output_dir / f"method_compare_v5_controlnet_lora_{timestamp}.png",
+        "ip_adapter": output_dir / f"method_compare_v4_controlnet_ip_adapter_{timestamp}.png",
+        "controlnet_lora": output_dir / f"method_compare_v5_controlnet_ip_lora_{timestamp}.png",
+        "instantstyle": output_dir / f"method_compare_v6_instantstyle_{timestamp}.png",
         "comparison": output_dir / f"method_compare_grid_{timestamp}.png",
     }
     if style_image is not None:
@@ -137,6 +143,7 @@ def save_outputs(
     controlnet_image.convert("RGB").save(paths["controlnet"])
     ip_adapter_image.convert("RGB").save(paths["ip_adapter"])
     lora_image.convert("RGB").save(paths["controlnet_lora"])
+    instantstyle_image.convert("RGB").save(paths["instantstyle"])
     if style_image is not None:
         style_image.convert("RGB").save(paths["style_reference"])
     comparison.convert("RGB").save(paths["comparison"])
@@ -146,7 +153,7 @@ def save_outputs(
 def run_comparison(args: argparse.Namespace) -> dict[str, Path]:
     source = Image.open(args.image)
     init_image = resize_for_diffusion(source, args.size)
-    lora_path = None if args.skip_lora else Path(args.lora)
+    lora_path = None if args.skip_lora else resolve_lora_path(args.lora)
 
     print("Generating V1 OpenCV style-transfer baseline...")
     opencv_image = run_opencv_version(init_image, args.opencv_style, args.opencv_strength)
@@ -167,33 +174,27 @@ def run_comparison(args: argparse.Namespace) -> dict[str, Path]:
     print("Generating V3 ControlNet structure-preserving result...")
     controlnet_image = generate_controlnet_image(control_pipe, init_image, canny_image, control_args)
 
-    if lora_path and lora_path.exists():
-        print(f"Loading LoRA: {lora_path}")
-        control_pipe.load_lora_weights(str(lora_path))
-        print("Generating V5 ControlNet + LoRA result...")
-        lora_args = make_args_copy(args, lora=str(lora_path))
-        lora_image = generate_controlnet_image(control_pipe, init_image, canny_image, lora_args)
-    else:
-        detail = "LoRA not found" if lora_path else "LoRA skipped"
-        print(f"Skipping LoRA panel: {detail}.")
-        lora_image = placeholder_panel(init_image.size, "ControlNet + LoRA", detail)
-
     del control_pipe
     cleanup_memory()
 
     style_image = None
     style_path = find_style_image(args.style_image, args.style_dataset_dir)
     if args.skip_ip_adapter:
-        print("Skipping IP-Adapter panel.")
-        ip_adapter_image = placeholder_panel(init_image.size, "IP-Adapter", "Skipped")
+        print("Skipping ControlNet + IP-Adapter panel.")
+        ip_adapter_image = placeholder_panel(init_image.size, "ControlNet + IP-Adapter", "Skipped")
+        lora_image = placeholder_panel(init_image.size, "V5 + LoRA", "Needs V4 pipeline")
+        instantstyle_image = placeholder_panel(init_image.size, "V6 InstantStyle", "Needs V4 pipeline")
     elif not style_path:
-        print("Skipping IP-Adapter panel: no style reference image found.")
-        ip_adapter_image = placeholder_panel(init_image.size, "IP-Adapter", "No style image")
+        print("Skipping ControlNet + IP-Adapter panel: no style reference image found.")
+        ip_adapter_image = placeholder_panel(init_image.size, "ControlNet + IP-Adapter", "No style image")
+        lora_image = placeholder_panel(init_image.size, "V5 + LoRA", "No style image")
+        instantstyle_image = placeholder_panel(init_image.size, "V6 InstantStyle", "No style image")
     else:
         print(f"Using IP-Adapter style reference: {style_path}")
-        style_image = resize_for_diffusion(Image.open(style_path), args.style_size)
+        style_image = prepare_style_reference(Image.open(style_path), args.style_size, args.style_square_mode)
         ip_args = make_args_copy(
             args,
+            lora=None,
             model=args.ip_model,
             controlnet=args.ip_controlnet,
             ip_adapter_repo=args.ip_adapter_repo,
@@ -201,6 +202,7 @@ def run_comparison(args: argparse.Namespace) -> dict[str, Path]:
             ip_adapter_weight=args.ip_adapter_weight,
             image_encoder_folder=args.image_encoder_folder,
             ip_adapter_scale=args.ip_adapter_scale,
+            instantstyle_mode=DEFAULT_INSTANTSTYLE_MODE,
             steps=args.ip_steps,
             strength=args.ip_strength,
             guidance=args.ip_guidance,
@@ -208,21 +210,58 @@ def run_comparison(args: argparse.Namespace) -> dict[str, Path]:
         )
         print("Loading SD1.5 + ControlNet + IP-Adapter pipeline...")
         ip_pipe = load_ip_adapter_pipeline(ip_args)
-        print("Generating V4 IP-Adapter reference-guided result...")
+        print("Generating V4 ControlNet + IP-Adapter result...")
         ip_adapter_image = generate_ip_adapter_image(ip_pipe, init_image, canny_image, style_image, ip_args)
+
+        if args.skip_instantstyle:
+            print("Skipping V6 InstantStyle panel.")
+            instantstyle_image = placeholder_panel(init_image.size, "V6 InstantStyle", "Skipped")
+        else:
+            print("Generating V6 InstantStyle result...")
+            apply_ip_adapter_scale(ip_pipe, args.instantstyle_scale, args.instantstyle_mode)
+            instantstyle_args = make_args_copy(
+                ip_args,
+                instantstyle_mode=args.instantstyle_mode,
+                ip_adapter_scale=args.instantstyle_scale,
+                steps=args.instantstyle_steps,
+                strength=args.instantstyle_strength,
+                guidance=args.instantstyle_guidance,
+                control_scale=args.instantstyle_control_scale,
+            )
+            instantstyle_image = generate_ip_adapter_image(ip_pipe, init_image, canny_image, style_image, instantstyle_args)
+
+        if args.skip_lora:
+            print("Skipping V5 LoRA panel.")
+            lora_image = placeholder_panel(init_image.size, "V5 + LoRA", "Skipped")
+        elif lora_path:
+            apply_ip_adapter_scale(ip_pipe, args.ip_adapter_scale, DEFAULT_INSTANTSTYLE_MODE)
+            print(f"Loading LoRA: {lora_path}")
+            ip_pipe.load_lora_weights(lora_path)
+            print("Generating V5 ControlNet + IP-Adapter + LoRA result...")
+            lora_args = make_args_copy(ip_args, lora=lora_path)
+            lora_image = generate_ip_adapter_image(ip_pipe, init_image, canny_image, style_image, lora_args)
+        else:
+            detail = "LoRA not found" if args.lora else "LoRA skipped"
+            print(f"Skipping V5 LoRA panel: {detail}.")
+            lora_image = placeholder_panel(init_image.size, "V5 + LoRA", detail)
+
         del ip_pipe
         cleanup_memory()
 
-    comparison = make_comparison_grid(
-        [
-            ("Original", init_image),
-            ("V1 OpenCV", opencv_image),
-            ("V2 SD Prompt", sd_image),
-            ("V3 ControlNet", controlnet_image),
-            ("V4 IP-Adapter", ip_adapter_image),
-            ("V5 ControlNet + LoRA", lora_image),
-        ]
-    )
+    comparison_items = [
+        ("Original", init_image),
+        ("V1 OpenCV", opencv_image),
+        ("V2 SD Prompt", sd_image),
+        ("V3 ControlNet", controlnet_image),
+    ]
+    if not args.skip_ip_adapter:
+        comparison_items.append(("V4 ControlNet + IP-Adapter", ip_adapter_image))
+    if not args.skip_lora and not args.skip_ip_adapter:
+        comparison_items.append(("V5 + LoRA", lora_image))
+    if not args.skip_instantstyle and not args.skip_ip_adapter:
+        comparison_items.append(("V6 InstantStyle", instantstyle_image))
+
+    comparison = make_comparison_grid(comparison_items)
     paths = save_outputs(
         Path(args.output_dir),
         init_image,
@@ -232,6 +271,7 @@ def run_comparison(args: argparse.Namespace) -> dict[str, Path]:
         controlnet_image,
         ip_adapter_image,
         lora_image,
+        instantstyle_image,
         comparison,
         style_image,
     )
@@ -257,13 +297,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--style-image", help="Neoclassical painting reference image for IP-Adapter.")
     parser.add_argument("--style-dataset-dir", default=str(DEFAULT_STYLE_DATASET_DIR), help="Fallback directory for style references.")
     parser.add_argument("--skip-ip-adapter", action="store_true", help="Generate the grid without loading IP-Adapter.")
-    parser.add_argument("--size", type=int, default=384, help="Longest side passed into diffusion models.")
-    parser.add_argument("--steps", type=int, default=12, help="Inference steps. Increase for quality, decrease for CPU tests.")
-    parser.add_argument("--strength", type=float, default=0.45, help="Img2img strength. Lower preserves more source content.")
-    parser.add_argument("--guidance", type=float, default=6.5, help="Classifier-free guidance scale.")
-    parser.add_argument("--control-scale", type=float, default=0.9, help="How strongly ControlNet follows source edges.")
-    parser.add_argument("--canny-low", type=int, default=80, help="Canny low threshold.")
-    parser.add_argument("--canny-high", type=int, default=180, help="Canny high threshold.")
+    parser.add_argument("--size", type=int, default=512, help="Longest side passed into diffusion models.")
+    parser.add_argument("--steps", type=int, default=28, help="Inference steps. Increase for quality, decrease for CPU tests.")
+    parser.add_argument("--strength", type=float, default=0.32, help="Img2img strength. Lower preserves more source content.")
+    parser.add_argument("--guidance", type=float, default=5.0, help="Classifier-free guidance scale.")
+    parser.add_argument("--control-scale", type=float, default=0.7, help="How strongly ControlNet follows source edges.")
+    parser.add_argument("--canny-low", type=int, default=100, help="Canny low threshold.")
+    parser.add_argument("--canny-high", type=int, default=200, help="Canny high threshold.")
     parser.add_argument("--opencv-style", default="david", help="OpenCV style: david, ingres, or marble.")
     parser.add_argument("--opencv-strength", type=float, default=0.9, help="OpenCV style strength from 0 to 1.")
     parser.add_argument("--ip-model", default=DEFAULT_MODEL, help="SD1.5-compatible base model for IP-Adapter.")
@@ -272,12 +312,20 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--ip-adapter-subfolder", default=DEFAULT_IP_ADAPTER_SUBFOLDER, help="IP-Adapter weight subfolder.")
     parser.add_argument("--ip-adapter-weight", default=DEFAULT_IP_ADAPTER_WEIGHT, help="IP-Adapter weight file.")
     parser.add_argument("--image-encoder-folder", default=DEFAULT_IMAGE_ENCODER_FOLDER, help="IP-Adapter image encoder folder.")
-    parser.add_argument("--ip-adapter-scale", type=float, default=0.75, help="Reference image influence strength.")
-    parser.add_argument("--style-size", type=int, default=384, help="Longest side for the style reference image.")
-    parser.add_argument("--ip-steps", type=int, default=12, help="Inference steps for the IP-Adapter SD1.5 branch.")
-    parser.add_argument("--ip-strength", type=float, default=0.45, help="Img2img strength for the IP-Adapter branch.")
-    parser.add_argument("--ip-guidance", type=float, default=6.5, help="Guidance scale for the IP-Adapter branch.")
-    parser.add_argument("--ip-control-scale", type=float, default=0.9, help="ControlNet scale for the IP-Adapter branch.")
+    parser.add_argument("--ip-adapter-scale", type=float, default=0.5, help="Reference image influence strength for V4/V5.")
+    parser.add_argument("--style-size", type=int, default=512, help="Target size for the style reference image.")
+    parser.add_argument("--style-square-mode", choices=("squash", "crop", "pad", "none"), default="squash", help="Prepare the style reference as a square before CLIP encoding.")
+    parser.add_argument("--ip-steps", type=int, default=28, help="Inference steps for the IP-Adapter SD1.5 branch.")
+    parser.add_argument("--ip-strength", type=float, default=0.32, help="Img2img strength for the IP-Adapter branch.")
+    parser.add_argument("--ip-guidance", type=float, default=5.0, help="Guidance scale for the IP-Adapter branch.")
+    parser.add_argument("--ip-control-scale", type=float, default=0.7, help="ControlNet scale for the IP-Adapter branch.")
+    parser.add_argument("--skip-instantstyle", action="store_true", help="Generate the grid without the V6 InstantStyle panel.")
+    parser.add_argument("--instantstyle-mode", choices=("style", "style_layout"), default="style", help="InstantStyle block preset for V6.")
+    parser.add_argument("--instantstyle-scale", type=float, default=0.8, help="IP-Adapter scale for V6 InstantStyle.")
+    parser.add_argument("--instantstyle-steps", type=int, default=30, help="Inference steps for V6 InstantStyle.")
+    parser.add_argument("--instantstyle-strength", type=float, default=0.35, help="Img2img strength for V6 InstantStyle.")
+    parser.add_argument("--instantstyle-guidance", type=float, default=5.0, help="Guidance scale for V6 InstantStyle.")
+    parser.add_argument("--instantstyle-control-scale", type=float, default=0.7, help="ControlNet scale for V6 InstantStyle.")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for repeatable comparisons.")
     parser.add_argument("--prompt", default=DEFAULT_PROMPT, help="Positive style-transfer prompt.")
     parser.add_argument("--negative-prompt", default=DEFAULT_NEGATIVE_PROMPT, help="Negative prompt.")
@@ -300,8 +348,9 @@ def main() -> None:
     print(f"Saved ControlNet: {paths['controlnet']}")
     if "style_reference" in paths:
         print(f"Saved style reference: {paths['style_reference']}")
-    print(f"Saved IP-Adapter: {paths['ip_adapter']}")
-    print(f"Saved ControlNet + LoRA: {paths['controlnet_lora']}")
+    print(f"Saved V4 ControlNet + IP-Adapter: {paths['ip_adapter']}")
+    print(f"Saved V5 ControlNet + IP-Adapter + LoRA: {paths['controlnet_lora']}")
+    print(f"Saved V6 InstantStyle: {paths['instantstyle']}")
     print(f"Saved comparison grid: {paths['comparison']}")
 
 

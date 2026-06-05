@@ -2,12 +2,12 @@
 
 ## 1. 为什么要加 ControlNet
 
-第三版的 LoRA 可以让风格有变化，但普通 Stable Diffusion img2img 有一个明显问题：`strength` 一高，模型就会重新生成街景，原图的街道结构、建筑轮廓和透视关系容易丢失。
+第三版的 LoRA 可以让风格有变化，但普通 Stable Diffusion img2img 有一个明显问题：`strength` 一高，模型就会重新生成内容，原图的结构、建筑轮廓和透视关系容易丢失。
 
-客户要的不是“重新画一条街”，而是：
+项目目标不是“重新生成一张图”，而是：
 
 ```text
-保留原始街景结构
+保留原始源图像结构
 只改变视觉风格、光影、笔触和油画质感
 ```
 
@@ -16,7 +16,7 @@
 ## 2. 技术路线
 
 ```text
-输入街景图
+输入源图像
 → 缩放到模型尺寸
 → OpenCV Canny 生成边缘图
 → Stable Diffusion + ControlNet Canny 图生图
